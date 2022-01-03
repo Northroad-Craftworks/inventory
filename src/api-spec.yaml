@@ -1,0 +1,23 @@
+openapi: "3.0.0"
+
+info:
+  title: Simple API overview
+  version: 0.0.0-unreleased.0
+
+paths:
+  /status:
+    get:
+      operationId: getStatus
+      summary: Get the status service
+      responses:
+        '200':
+          description: General information about the health and status of the service.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    description: Current release version
+                    example: 1.0.0
