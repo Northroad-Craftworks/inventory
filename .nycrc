@@ -1,0 +1,7 @@
+{
+  "check-coverage": true,
+  "all": true,
+  "branches": 100,
+  "statements": 100,
+  "include": "src/"
+}

@@ -1,5 +1,5 @@
 import { expect } from './test-setup.js';
-import * as apiSpec from '../src/api-spec.js';
+import * as apiSpec from '../src/utilities/api-spec.js';
 
 describe('api-spec.js', function () {
     it('should export the spec as an object', function () {

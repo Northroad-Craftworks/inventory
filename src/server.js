@@ -1,8 +1,7 @@
 import express from 'express';
-import helmet from 'helmet';
-import swaggerUi from 'swagger-ui-express';
-import logger from './logger.js';
-import { apiSpec, version } from './api-spec.js';
+import createError from 'http-errors';
+import logger from './utilities/logger.js';
+import * as middleware from './middleware/index.js';
 
 // Create the express server.
 logger.debug('Initializing express...');
@@ -10,19 +9,21 @@ export const app = express();
 export default app;
 
 // Use helmet for security.
-app.use(helmet());
-
-// Serve the API docs.
-app.use('/', swaggerUi.serve);
-app.get('/', swaggerUi.setup(apiSpec));
+app.use(middleware.helmet);
 
 // Serve a status API.
-app.get('/status', (req, res) => {
-    res.json({
-        version
-    });
-});
+app.get('/status', middleware.status);
 
+// Serve the swaggerUI middleware.
+app.use('/', middleware.swaggerUi);
+
+// Log all other requests
+app.use(middleware.logger);
+
+// For any unhandled request, throw an error.
+app.use((req, res) => {
+    res.sendStatus(404);
+});
 
 // Start the server.
 logger.debug('Starting HTTP server...');
