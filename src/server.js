@@ -1,12 +1,11 @@
 import express from 'express';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
+import logger from './logger.js';
 import { apiSpec, version } from './api-spec.js';
 
-// TODO Use a proper logger
-console.log('Initializing...');
-
 // Create the express server.
+logger.debug('Initializing express...');
 export const app = express();
 export default app;
 
@@ -24,13 +23,13 @@ app.get('/status', (req, res) => {
     });
 });
 
+
+// Start the server.
+logger.debug('Starting HTTP server...');
 export const server = await new Promise((resolve) => {
     const server = app.listen(process.env.PORT, () => {
         resolve(server);
     });
 });
-
 export const localUrl = `http://localhost:${server.address().port}`;
-
-// TODO Use a proper logger.
-console.log(`Listening on ${localUrl}`);
+logger.info(`Listening on ${localUrl}`);
