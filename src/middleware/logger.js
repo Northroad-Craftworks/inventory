@@ -1,5 +1,5 @@
 import morgan from 'morgan';
-import logger from '../utilities/logger.js';
+import logger from '../lib/logger.js';
 
 export default morgan('dev', {
     stream: {

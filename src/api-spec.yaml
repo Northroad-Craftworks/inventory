@@ -1,14 +1,14 @@
 openapi: "3.0.0"
 
 info:
-  title: Simple API overview
-  version: unreleased
+  title: Northroad Craftworks Inventory
+  version: Development
 
 paths:
   /status:
     get:
       operationId: getStatus
-      summary: Get the status service
+      summary: Get the service status
       responses:
         '200':
           description: General information about the health and status of the service.
@@ -21,3 +21,172 @@ paths:
                     type: string
                     description: Current release version
                     example: 1.0.0
+
+components:
+  schemas:
+    InventoryTransaction:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          description: The timestamp of when the transaction occured.
+
+    PurchaseTransaction:
+      type: object
+      properties:
+        date:
+          type: string
+          description: When the transaction occured.
+        items:
+          type: array
+          description: A list of all the materials purchased, and their costs.
+          items:
+            type: object
+            required: [description, quantity, cost, unitCost]
+            properties:
+              description:
+                type: string
+                description: Description of the line item.
+              inventoryId:
+                $ref: "#/components/schemas/InventoryItem/properties/id"
+              quantity:
+                type: number
+                description: The amount of the material purchased.
+              cost:
+                type: number
+                description: The total cost of the material.
+              unitCost:
+                readOnly: true
+                description: The cost per unit.
+        # TODO Add a discount, which can be applied to item costs.
+        shipping:
+          type: number
+          description: The amount spent on shipping expenses.
+        tax:
+          type: number
+          description: The amount of tax paid.
+        total:
+          type: number
+          description: The total amount of the transaction
+
+    ManufactureTransaction:
+      type: object
+      properties:
+        date:
+          type: string
+          description: The date of manufacturing
+        materials:
+          type: array
+          description: A list of all the materials consumed in the product.
+          items:
+            type: object
+            required: [inventoryId, quantity, cost, unitCost]
+            properties:
+              inventoryId:
+                $ref: "#/components/schemas/InventoryItem/properties/id"
+              quantity:
+                type: number
+                description: The amount of the material purchased.
+              cost:
+                readOnly: true
+                type: number
+                description: The total cost of the material.
+              unitCost:
+                readOnly: true
+                description: The cost per unit.
+        product:
+          type: object
+          description: The product produced.
+          properties:
+            inventoryId:
+              $ref: "#/components/schemas/InventoryItem/properties/id"
+            quantity:
+              type: number
+              description: The amount of the product produced.
+            cost:
+              readOnly: true
+              type: number
+              description: The total cost-of-goods-manufactered (COGM).
+            unitCost:
+              readOnly: true
+              description: The cost-of-goods-manufactered (COGM) per unit.
+
+    SaleTransaction:
+      type: object
+      properties:
+        date:
+          type: string
+          description: The date of manufacturing
+        items:
+          type: array
+          description: A list of all the items sold
+          items:
+            type: object
+            required: [inventoryId, quantity, cost, unitCost]
+            properties:
+              inventoryId:
+                $ref: "#/components/schemas/InventoryItem/properties/id"
+              quantity:
+                type: number
+                description: The amount of the material purchased.
+              cost:
+                readOnly: true
+                type: number
+                description: The total cost of the material.
+              unitCost:
+                readOnly: true
+                description: The cost per unit.
+
+    InventoryItem:
+      type: object
+      required: [id, name, account]
+      properties:
+        id:
+          type: string
+          description: Unique ID of the material, part, or product
+          pattern: '[a-z0-9-]+'
+          example: widget-blue-2in
+        name:
+          type: string
+          description: Friendly name for display.
+          example: 2" Blue Widget
+        account:
+          type: string
+          description: |
+            The asset account associated with the item.
+
+            Examples:
+            - Raw Materials
+            - In-Progress Materials
+            - Finished Materials
+          example: Raw Materials
+        unit:
+          type: string
+          description: |
+            Unit of measure for the material.
+
+            Examples:
+            - each
+            - bd.ft.
+            - fl.oz.
+          default: each
+        quantity:
+          readOnly: true
+          type: number
+          description: The quantity of the item currently in inventory.
+          example: 2
+        totalCost:
+          readOnly: true
+          type: number
+          description: The total cost of all the units currently in inventory.
+          example: 4.00
+        unitCost:
+          readOnly: true
+          type: number
+          description: The per-unit cost of each unit currently in inventory.
+          example: 2.00
+        lastUpdated:
+          readOnly: true
+          type: string
+          format: date-time
+          description: The timestamp of the last transaction used to update this inventory.

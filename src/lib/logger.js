@@ -6,7 +6,11 @@ export const consoleTransport = new transports.Console({
     format: format.combine(
         format.errors({ stack: true }),
         format.colorize(),
-        format.simple()
+        format.cli(),
+        format.printf(({ timestamp, level, message }) => {
+            const timestampOpts = { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }
+            return `${new Date(timestamp).toLocaleTimeString([], timestampOpts)} ${level}: ${message}`
+        })
     )
 });
 
@@ -24,5 +28,6 @@ export const logger = createLogger({
         new transports.File({ filename: 'logs/all.log' })
     ]
 });
+logger.debug(`Log level set to '${logger.level}'`);
 
 export default logger;
