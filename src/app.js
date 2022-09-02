@@ -6,6 +6,7 @@ import helmetMiddleware from './middleware/helmet.js';
 import statusMiddleware from './middleware/status.js';
 import swaggerUiMiddleware from './middleware/swagger-ui.js';
 import loggerMiddleware from './middleware/logger.js';
+import apiMiddleware from './middleware/api.js';
 
 // Create the express server.
 logger.debug('Initializing express...');
@@ -27,10 +28,25 @@ app.use('/', swaggerUiMiddleware);
 // Log all other requests
 app.use(loggerMiddleware);
 
+// Mount the APIs
+app.use(apiMiddleware);
+
 // For any unhandled request, throw an error.
 app.use((req, res) => {
     res.sendStatus(404);
 });
+
+// Return errors as JSON.
+app.use((error, req, res, next) => {
+    // Make sure this is an HTTP error, and extract everything.
+    const { expose, message, statusCode, stack, headers } = createError(error);
+    logger.error(error);
+    logger.debug(stack || 'No error stack available');
+    if (headers) res.set(headers);
+    if (expose) res.status(statusCode).send(message);
+    else res.sendStatus(statusCode);
+
+})
 
 // Start the server.
 logger.debug('Starting HTTP server...');

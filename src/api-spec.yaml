@@ -4,13 +4,22 @@ info:
   title: Northroad Craftworks Inventory
   version: Development
 
+tags:
+  - name: Service
+    description: Information about the service's status
+  - name: Inventory Items
+    description: Manage inventory items
+  - name: Transactions
+    description: Buy, sell, manufacture, and adjust items in inventory
+
 paths:
   /status:
     get:
       operationId: getStatus
       summary: Get the service status
+      tags: [Service]
       responses:
-        '200':
+        "200":
           description: General information about the health and status of the service.
           content:
             application/json:
@@ -21,8 +30,127 @@ paths:
                     type: string
                     description: Current release version
                     example: 1.0.0
+  /items:
+    get:
+      operationId: item.list
+      summary: List inventory items
+      tags: [Inventory Items]
+      responses:
+        "200":
+          description: All inventory items
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+        default:
+          description: An error occurred
+
+  /item/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/inventoryItemId"
+    get:
+      operationId: item.fetch
+      summary: Get an inventory item
+      tags: [Inventory Items]
+      responses:
+        "200":
+          description: Details about the inventory item
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        default:
+          description: An error occurred
+    put:
+      operationId: item.define
+      summary: Create or update an inventory item
+      tags: [Inventory Items]
+      requestBody:
+        description: Inventory item data
+        content:
+          "*/*":
+            schema:
+              $ref: "#/components/schemas/InventoryItem"
+      responses:
+        "201":
+          description: Inventory item created
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "200":
+          description: Inventory item updated
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        default:
+          description: An error occurred
+    delete:
+      operationId: item.destroy
+      summary: Delete an unused inventory item
+      description: |
+        Inventory items can only be deleted if they haven't been used for any transactions and don't exist on any
+        ledgers. Once an inventory item has been bought, sold, or manufactured, it cannot be deleted until **all**
+        transactions which reference it have been deleted or archived.
+      tags: [Inventory Items]
+      deprecated: true
+      responses:
+        "501":
+          description: Not implemented
+
+  /buy:
+    post:
+      operationId: recordBuyTransaction
+      summary: Record the purchase of new inventory
+      tags: [Transactions]
+      deprecated: true
+      responses:
+        "501":
+          description: Not implemented
+
+  /sell:
+    post:
+      operationId: recordSellTransaction
+      summary: Record the sale of inventory to customers
+      tags: [Transactions]
+      deprecated: true
+      responses:
+        "501":
+          description: Not implemented
+
+  /manufacture:
+    post:
+      operationId: recordManufactureTransaction
+      summary: Manufacture new inventory items from existing ones
+      tags: [Transactions]
+      deprecated: true
+      responses:
+        "501":
+          description: Not implemented
+
+  /adjust:
+    post:
+      operationId: recordManufactureTransaction
+      summary: Manually adjust inventory items as the result of loss, damage, waste, or audits
+      tags: [Transactions]
+      deprecated: true
+      responses:
+        "501":
+          description: Not implemented
 
 components:
+  parameters:
+    inventoryItemId:
+      name: itemId
+      in: path
+      required: true
+      description: Item `id` of the desired item.
+      schema:
+        $ref: "#/components/schemas/InventoryItem/properties/id"
+
   schemas:
     InventoryTransaction:
       type: object
@@ -142,9 +270,10 @@ components:
       required: [id, name, account]
       properties:
         id:
+          readOnly: true
           type: string
-          description: Unique ID of the material, part, or product
-          pattern: '[a-z0-9-]+'
+          description: Unique ID or SKU of the material, part, or product.
+          pattern: "[a-z0-9-]+"
           example: widget-blue-2in
         name:
           type: string
@@ -152,14 +281,11 @@ components:
           example: 2" Blue Widget
         account:
           type: string
-          description: |
-            The asset account associated with the item.
-
-            Examples:
+          description: The asset account associated with the item.
+          enum:
             - Raw Materials
-            - In-Progress Materials
-            - Finished Materials
-          example: Raw Materials
+            - In-Progress
+            - Finished
         unit:
           type: string
           description: |
@@ -185,6 +311,10 @@ components:
           type: number
           description: The per-unit cost of each unit currently in inventory.
           example: 2.00
+        hidden:
+          type: boolean
+          description: If `true`, the item should be hidden from selection lists and displays.
+          default: false
         lastUpdated:
           readOnly: true
           type: string
