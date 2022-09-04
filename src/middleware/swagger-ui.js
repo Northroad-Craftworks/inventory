@@ -1,9 +1,8 @@
+import { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { apiSpec, version } from '../lib/api-spec.js';
+import { apiSpec } from '../lib/api-spec.js';
 
-import express from 'express';
-
-const router = new express.Router();
+const router = new Router();
 export default router;
 
 // Serve the API docs.

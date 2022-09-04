@@ -3,7 +3,6 @@ import express from 'express';
 import createError from 'http-errors';
 import logger from './lib/logger.js';
 import helmetMiddleware from './middleware/helmet.js';
-import statusMiddleware from './middleware/status.js';
 import swaggerUiMiddleware from './middleware/swagger-ui.js';
 import loggerMiddleware from './middleware/logger.js';
 import apiMiddleware from './middleware/api.js';
@@ -15,9 +14,6 @@ export default app;
 
 // Use helmet for security.
 app.use(helmetMiddleware);
-
-// Serve a status API.
-app.get('/status', statusMiddleware);
 
 // Serve static assets.
 app.use('/static', express.static(new URL('static', import.meta.url).pathname));
@@ -40,13 +36,12 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
     // Make sure this is an HTTP error, and extract everything.
     const { expose, message, statusCode, stack, headers } = createError(error);
-    logger.error(error);
-    logger.debug(stack || 'No error stack available');
+    if (statusCode < 500) logger.error(error);
+    else logger.error(stack || error);
     if (headers) res.set(headers);
     if (expose) res.status(statusCode).send(message);
     else res.sendStatus(statusCode);
-
-})
+});
 
 // Start the server.
 logger.debug('Starting HTTP server...');

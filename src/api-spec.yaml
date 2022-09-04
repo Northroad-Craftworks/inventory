@@ -32,18 +32,18 @@ paths:
                     example: 1.0.0
   /items:
     get:
-      operationId: item.list
+      operationId: listItems
       summary: List inventory items
       tags: [Inventory Items]
       responses:
         "200":
           description: All inventory items
           content:
-            "*/*":
+            "application/json":
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/InventoryItem"
+                  $ref: "#/components/schemas/Item"
         default:
           description: An error occurred
 
@@ -51,45 +51,67 @@ paths:
     parameters:
       - $ref: "#/components/parameters/inventoryItemId"
     get:
-      operationId: item.fetch
+      operationId: readItem
       summary: Get an inventory item
       tags: [Inventory Items]
       responses:
         "200":
           description: Details about the inventory item
           content:
-            "*/*":
+            "application/json":
               schema:
-                $ref: "#/components/schemas/InventoryItem"
+                $ref: "#/components/schemas/Item"
         default:
           description: An error occurred
     put:
-      operationId: item.define
-      summary: Create or update an inventory item
+      operationId: createItem
+      summary: Create an inventory item
       tags: [Inventory Items]
       requestBody:
         description: Inventory item data
         content:
-          "*/*":
+          "application/json":
             schema:
-              $ref: "#/components/schemas/InventoryItem"
+              $ref: "#/components/schemas/Item"
       responses:
         "201":
           description: Inventory item created
           content:
-            "*/*":
+            "application/json":
               schema:
-                $ref: "#/components/schemas/InventoryItem"
+                $ref: "#/components/schemas/Item"
         "200":
           description: Inventory item updated
           content:
-            "*/*":
+            "application/json":
               schema:
-                $ref: "#/components/schemas/InventoryItem"
+                $ref: "#/components/schemas/Item"
+        default:
+          description: An error occurred
+    
+    patch:
+      operationId: updateItem
+      summary: Update an inventory item
+      tags: [Inventory Items]
+      requestBody:
+        description: Updates to inventory data
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                $ref: "#/components/schemas/Item/properties"
+      responses:
+        "200":
+          description: Inventory item updated
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Item"
         default:
           description: An error occurred
     delete:
-      operationId: item.destroy
+      operationId: deleteItem
       summary: Delete an unused inventory item
       description: |
         Inventory items can only be deleted if they haven't been used for any transactions and don't exist on any
@@ -149,7 +171,8 @@ components:
       required: true
       description: Item `id` of the desired item.
       schema:
-        $ref: "#/components/schemas/InventoryItem/properties/id"
+        readOnly: false
+        $ref: "#/components/schemas/Item/properties/id"
 
   schemas:
     InventoryTransaction:
@@ -176,7 +199,7 @@ components:
                 type: string
                 description: Description of the line item.
               inventoryId:
-                $ref: "#/components/schemas/InventoryItem/properties/id"
+                $ref: "#/components/schemas/Item/properties/id"
               quantity:
                 type: number
                 description: The amount of the material purchased.
@@ -211,7 +234,7 @@ components:
             required: [inventoryId, quantity, cost, unitCost]
             properties:
               inventoryId:
-                $ref: "#/components/schemas/InventoryItem/properties/id"
+                $ref: "#/components/schemas/Item/properties/id"
               quantity:
                 type: number
                 description: The amount of the material purchased.
@@ -227,7 +250,7 @@ components:
           description: The product produced.
           properties:
             inventoryId:
-              $ref: "#/components/schemas/InventoryItem/properties/id"
+              $ref: "#/components/schemas/Item/properties/id"
             quantity:
               type: number
               description: The amount of the product produced.
@@ -253,7 +276,7 @@ components:
             required: [inventoryId, quantity, cost, unitCost]
             properties:
               inventoryId:
-                $ref: "#/components/schemas/InventoryItem/properties/id"
+                $ref: "#/components/schemas/Item/properties/id"
               quantity:
                 type: number
                 description: The amount of the material purchased.
@@ -265,7 +288,7 @@ components:
                 readOnly: true
                 description: The cost per unit.
 
-    InventoryItem:
+    Item:
       type: object
       required: [id, name, account]
       properties:

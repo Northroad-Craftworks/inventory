@@ -1,5 +1,6 @@
 import { version } from '../lib/api-spec.js';
 
-export default (req, res) => {
+export function getStatus(req, res) {
+    req.skipLog = true;
     res.json({ version });
 }
