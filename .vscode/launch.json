@@ -13,7 +13,8 @@
                 "<node_internals>/**"
             ],
             "cwd": "${workspaceFolder}",
-            "outputCapture": "std"
+            "outputCapture": "std",
+            "internalConsoleOptions": "openOnSessionStart"
         },
         {
             "type": "node",

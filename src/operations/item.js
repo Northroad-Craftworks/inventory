@@ -1,31 +1,50 @@
 import createError from 'http-errors';
+import Item from '../models/Item.js';
 
-export function listItems(req, res, next) {
-    throw createError(501, "Operation 'items.list' is not yet available");
+export async function listItems(req, res, next) {
+    // Pre-validate the accepts header;
+    const accepts = req.accepts(['json', 'text']);
+    if (!accepts) throw createError(406);
+
+    // Get all items.
+    const items = await Item.list();
+
+    // Apply filters.
+    const hiddenFilter = req.query?.hidden;
+    const accountFilter = req.query?.account;
+    const results = items.filter(item => {
+        if (hiddenFilter !== undefined && item.hidden !== hiddenFilter) return false;
+        if (accountFilter !== undefined && item.account !== accountFilter) return false;
+        return true;
+    });
+
+    // Return the results in the accepted format.
+    if (accepts === 'json') res.json(results);
+    else if (accepts === 'text') res.send(results.join('\n'));
+    else throw new Error('Impossible MIME type match');
 }
 
-export function createItem(req, res, next) {
-    const document = { id: req.params.itemId, ...req.body};
-    res.json(document);
-    // const valid = validate.InventoryItem(document);
-    // if (!valid) res.status(400).json({
-    //     message: "Invalid request",
-    //     errors: validate.InventoryItem.errors
-    // })
-    // else {
-    //     res.json(document);
-    // }
+export async function createItem(req, res) {
+    const item = await Item.create(req.params.itemId, req.body);
+    res.status(201).json(item);
 }
 
-export function readItem(req, res, next) {
-    throw createError(501, "Operation 'items.fetch' is not yet available");
+export async function readItem(req, res) {
+    const item = await Item.get(req.params.itemId);
+    res.json(item);
 }
 
-export function updateItem(req, res, next) {
-    const document = { id: req.params.itemId, ...req.body};
-    res.json(document);
+export async function updateItem(req, res) {
+    const item = await Item.get(req.params.itemId);
+    item.patch(req.body);
+    await item.save();
+    res.json(item);
 }
 
-export function deleteItem(req, res, next) {
-    throw createError(501, "Operation 'items.destroy' is not yet available");
+export async function deleteItem(req, res) {
+    const item = await Item.get(req.params.itemId);
+    // TODO Check ledgers to make sure the item can be deleted.
+    if (item.quantity) throw createError(403, 'Cannot delete an item that has inventory in stock');
+    await item.destroy();
+    res.send({ok: true});
 }

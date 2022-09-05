@@ -1,4 +1,4 @@
-import express, { Router } from 'express'
+import express, { Router } from 'express';
 import openApiFramework from 'express-openapi';
 import createError from 'http-errors';
 import apiSpec from '../lib/api-spec.js';
@@ -16,23 +16,29 @@ openApiFramework.initialize({
     exposeApiDocs: false,
     enableObjectCoercion: true,
     consumesMiddleware: {
-        'application/x-www-form-urlencoded': express.urlencoded({extended: false}),
+        'application/x-www-form-urlencoded': express.urlencoded({ extended: false }),
         'application/json': express.json()
     },
     operations,
+    errorTransformer: (openapiError, ajvError) => {
+        let { message, location, path } = openapiError;
+        switch (ajvError.keyword) {
+            case 'additionalProperties':
+                message = `\`${ajvError.params.additionalProperty}\` is not an writeable property`;
+                break;
+            case 'enum':
+                message = `\`${path}\` ${message}: ${ajvError.params.allowedValues.join(', ')}`;
+                break;
+            default:
+                message = `\`${path}\` ${message}`;
+        }
+        return { message };
+    },
     errorMiddleware: (error, req, res, next) => {
-        if (error.status == 400 && error.errors) {
-            const suberrors = error.errors.map(error => `\`${error.location}.${error.path}\`: ${error.message}`);
-            const message = ['Bad request:', ...suberrors].join('\n- ')
+        if (error.errors) {
+            const message = ['Bad request:', ...error.errors.map(error => error.message)].join('\n- ');
             next(createError(error.status, message));
         }
-        else if (error.errors?.length === 1){
-            next(createError(error.status, error.errors[0]));
-        }
-        else if (error.errors){
-            error.errors.forEach(error => logger.error(error));
-            next(createError(error.status, 'Multiple errors'));
-        }
-        else next(createError(error.status, error));
+        else next(createError(error.status || 500, error));
     }
 });

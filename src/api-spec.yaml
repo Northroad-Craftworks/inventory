@@ -35,6 +35,17 @@ paths:
       operationId: listItems
       summary: List inventory items
       tags: [Inventory Items]
+      parameters:
+        - in: query
+          name: hidden
+          description: Filter by hidden status
+          schema:
+            type: boolean
+        - in: query
+          name: account
+          description: Filter by account
+          schema:
+            $ref: "#/components/schemas/Item/properties/account"
       responses:
         "200":
           description: All inventory items
@@ -44,8 +55,11 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Item"
+            "text/plain":
+              schema:
+                description: A text list of all the items in inventory
         default:
-          description: An error occurred
+          $ref: "#/components/responses/Error"
 
   /item/{itemId}:
     parameters:
@@ -62,7 +76,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Item"
         default:
-          description: An error occurred
+          $ref: "#/components/responses/Error"
     put:
       operationId: createItem
       summary: Create an inventory item
@@ -87,7 +101,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Item"
         default:
-          description: An error occurred
+          $ref: "#/components/responses/Error"
     
     patch:
       operationId: updateItem
@@ -98,9 +112,7 @@ paths:
         content:
           "application/json":
             schema:
-              type: object
-              properties:
-                $ref: "#/components/schemas/Item/properties"
+              $ref: "#/components/schemas/Item"
       responses:
         "200":
           description: Inventory item updated
@@ -109,7 +121,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Item"
         default:
-          description: An error occurred
+          $ref: "#/components/responses/Error"
     delete:
       operationId: deleteItem
       summary: Delete an unused inventory item
@@ -118,10 +130,11 @@ paths:
         ledgers. Once an inventory item has been bought, sold, or manufactured, it cannot be deleted until **all**
         transactions which reference it have been deleted or archived.
       tags: [Inventory Items]
-      deprecated: true
       responses:
-        "501":
-          description: Not implemented
+        "200":
+          description: Delete successfully
+        default:
+          $ref: "#/components/responses/Error"
 
   /buy:
     post:
@@ -173,6 +186,17 @@ components:
       schema:
         readOnly: false
         $ref: "#/components/schemas/Item/properties/id"
+
+  responses:
+    Error:
+      description: Something went wrong
+      content:
+        'text/plain':
+          schema:
+            type: string
+            description: A description of the problem
+            example: 'Internal server error'
+
 
   schemas:
     InventoryTransaction:
@@ -290,7 +314,8 @@ components:
 
     Item:
       type: object
-      required: [id, name, account]
+      required: [id]
+      additionalProperties: false
       properties:
         id:
           readOnly: true
@@ -309,6 +334,7 @@ components:
             - Raw Materials
             - In-Progress
             - Finished
+          default: Raw Materials
         unit:
           type: string
           description: |

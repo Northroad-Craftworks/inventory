@@ -40,7 +40,7 @@ app.use((error, req, res, next) => {
     /* c8 ignore next 4 */
     if (statusCode >= 500) logger.error(stack || 'No stack available');
     if (headers) res.set(headers);
-    if (expose) res.status(statusCode).send(message);
+    if (expose) res.status(statusCode).type('text/plain').send(message);
     else res.sendStatus(statusCode);
 });
 
