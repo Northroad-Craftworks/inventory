@@ -12,6 +12,7 @@ await readdir(new URL('.', import.meta.url), 'utf8')
     ))
     .then(modules => modules.forEach(module => {
         Object.entries(module).forEach(([operationId, handler]) => {
+            /* c8 ignore next */
             if (operations[operationId]) logger.warn(`Duplicate handler for ${operationId}`);
             operations[operationId] = handler;
         });

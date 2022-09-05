@@ -9,6 +9,7 @@ export const version = JSON.parse(packageJson).version;
 // Load the API spec
 export const apiSpecPath = new URL('../api-spec.yaml', import.meta.url).toString();
 export const apiSpec = await SwaggerParser.validate(apiSpecPath);
+/* c8 ignore next */
 if (version !== '0.0.0-unreleased.0') apiSpec.info.version = version;
 export default apiSpec;
 

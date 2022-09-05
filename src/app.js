@@ -36,8 +36,9 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
     // Make sure this is an HTTP error, and extract everything.
     const { expose, message, statusCode, stack, headers } = createError(error);
-    if (statusCode < 500) logger.error(error);
-    else logger.error(stack || error);
+    logger.error(error);
+    /* c8 ignore next 4 */
+    if (statusCode >= 500) logger.error(stack || 'No stack available');
     if (headers) res.set(headers);
     if (expose) res.status(statusCode).send(message);
     else res.sendStatus(statusCode);

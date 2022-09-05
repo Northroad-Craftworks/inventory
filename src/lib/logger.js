@@ -21,6 +21,29 @@ const objectFormatter = {
 // Add colors for custom levels.
 winston.addColors({ couch: 'yellow' });
 
+// Create a console-based transport which can be silenced separately from the others.
+export const consoleTransport = new transports.Console({
+    format: format.combine(
+        format.colorize(),
+        format.printf(({ timestamp, level, message }) => {
+            const timestampOpts = {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            };
+            return `${new Date(timestamp).toLocaleTimeString([], timestampOpts)} ${level}: ${message}`;
+        })
+    )
+})
+
+// Add extra formatting to the file-based transports.
+const fileFormat = format.combine(
+    format.uncolorize(),
+    format.json()
+);
+
 // Create the logger.
 export const logger = createLogger({
     level: process.env.LOG_LEVEL || 'http',
@@ -28,29 +51,12 @@ export const logger = createLogger({
     format: format.combine(
         format.errors(),
         objectFormatter,
-        // format.uncolorize(),
-        format.timestamp(),
-        format.json()
+        format.timestamp()
     ),
     transports: [
-        new transports.File({ filename: 'logs/error.log', level: 'error' }),
-        new transports.File({ filename: 'logs/all.log' }),
-        new transports.Console({
-            format: format.combine(
-                format.colorize(),
-                // format.padLevels({ levels }),
-                format.printf(({ timestamp, level, message }) => {
-                    const timestampOpts = {
-                        hour12: false,
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        fractionalSecondDigits: 3
-                    };
-                    return `${new Date(timestamp).toLocaleTimeString([], timestampOpts)} ${level}: ${message}`;
-                })
-            )
-        })
+        consoleTransport,
+        new transports.File({ format: fileFormat, filename: 'logs/error.log', level: 'error' }),
+        new transports.File({ format: fileFormat, filename: 'logs/all.log' }),
     ]
 });
 logger.debug(`Log level set to '${logger.level}'`);

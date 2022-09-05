@@ -5,14 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run Server",
             "type": "node",
             "request": "launch",
-            "name": "Run Server",
+            "program": "${workspaceFolder}/src/app.js",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/src/app.js",
             "cwd": "${workspaceFolder}",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Mocha Tests",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["test"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "internalConsoleOptions": "openOnSessionStart",
             "outputCapture": "std"
         }
     ]
