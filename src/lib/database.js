@@ -16,19 +16,56 @@ const nanoOpts = {
         else if (data.err) logger.couch('ERR', data.headers.statusCode, path, data.body?.message || `Unknown ${data.err} error`);
         else logger.couch('OK', data.headers.statusCode, path);
     }
-}
+};
 export const nano = Nano(nanoOpts);
-export const db = process.env.COUCHDB_DATABASE || 'inventory';
-export const database = nano.use(db);
-export default database;
 
-// Initialize the database.
-logger.debug(`Checking for database ${db}`);
-await nano.db.get(db).catch(async error => {
-    if (error?.scope === 'couch' && error.statusCode === 404) {
-        logger.warn('Database does not exist and will be created')
-        await nano.db.create(db).catch(error => { throw new Error('Unable to create database') });
+// Create a class for database operations.
+export class Database {
+    constructor(db) {
+        this.db = db;
+        this.database = nano.use(db);
     }
-    else throw new Error('Unable to connect to database');
-})
-logger.verbose(`View database documents at ${url.origin}/_utils/#database/${db}/_all_docs`);
+
+    async initialize() {
+        const { db } = this;
+        logger.debug(`Checking for database ${db}`);
+        await nano.db.get(db).catch(async error => {
+            if (error?.scope === 'couch' && error.statusCode === 404) {
+                logger.warn('Database does not exist and will be created');
+                await nano.db.create(db).catch(error => { throw new Error('Unable to create database'); });
+            }
+            else throw new Error('Unable to connect to database');
+        });
+        logger.verbose(`View database documents at ${url.origin}/_utils/#database/${db}/_all_docs`);
+    }
+
+    async list(options){
+        return this.database.list(options);
+        // TODO Handle/translate errors.
+    }
+
+    async get(id){
+        return this.database.get(id);
+        // TODO Handle/translate errors.
+    }
+
+    async insert(document){
+        const response = await this.database.insert(document);
+        // TODO Handle/translate errors.
+        this.document._rev = response.rev;
+        return response;
+    }
+
+    async view(design, view, options){
+        return this.database.view(design, view, options).catch(error => {
+            // All view errors are, by definition, internal errors.
+            error.statusCode = 500;
+            throw error;
+        })
+    }
+}
+
+// Initialize the default database.
+export const database = new Database(process.env.COUCHDB_DATABASE || 'inventory');
+await database.initialize();
+export default database;
