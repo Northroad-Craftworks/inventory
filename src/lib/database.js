@@ -155,7 +155,7 @@ export class DesignDoc {
 
         // Publish a new or updated version.
         this.document._rev = existingDoc?._rev;
-        await insertDocument(this.document)
+        await insert(this.document)
             .then(revision => logger.info(`Updated design document ${this.name}@${revision}`))
             .catch(error => {
                 if (error.statusCode !== 409) throw error;
