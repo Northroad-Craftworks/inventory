@@ -138,6 +138,8 @@ paths:
           $ref: "#/components/responses/Error"
 
   /buy:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
     post:
       operationId: recordPurchase
       summary: Record the purchase of new inventory
@@ -149,6 +151,12 @@ paths:
             schema:
               $ref: "#/components/schemas/Purchase"
       responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Purchase"
         "201":
           description: "Transaction created"
           content:
@@ -159,6 +167,8 @@ paths:
           $ref: "#/components/responses/Error"
 
   /sell:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
     post:
       operationId: recordSale
       summary: Record the sale of inventory to customers
@@ -170,6 +180,12 @@ paths:
             schema:
               $ref: "#/components/schemas/Sale"
       responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Sale"
         "201":
           description: "Transaction created"
           content:
@@ -180,6 +196,8 @@ paths:
           $ref: "#/components/responses/Error"
 
   /make:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
     post:
       operationId: recordManufacture
       summary: Manufacture new inventory items from existing ones
@@ -191,6 +209,12 @@ paths:
             schema:
               $ref: "#/components/schemas/Manufacture"
       responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Manufacture"
         "201":
           description: "Transaction created"
           content:
@@ -201,6 +225,8 @@ paths:
           $ref: "#/components/responses/Error"
 
   /adjust:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
     post:
       operationId: recordAuditTransaction
       summary: Manually adjust inventory items as the result of loss, damage, waste, or audits
@@ -298,6 +324,13 @@ components:
       schema:
         readOnly: false
         $ref: "#/components/schemas/Item/properties/id"
+    dryRunQuery:
+      in: query
+      name: dryRun
+      description: Simulate the transaction, without executing it.
+      schema:
+        type: boolean
+        default: false
 
   responses:
     Error:
@@ -310,7 +343,7 @@ components:
             example: 'Internal server error'
 
 
-  schemas:        
+  schemas:
     Purchase:
       type: object
       description: A transaction which purchases materials or items for resale.
@@ -367,11 +400,14 @@ components:
                 minimum: 0
                 description: The **total** price of all units, excluding tax and shipping.
                 example: 1500
-              unitCost:
-                readOnly: true
+              inventoryQuantity:
                 type: number
-                description: The calculated cost-per-unit of the item in the transaction.
-                example: 6
+                description: The quantity of the item in inventory _after_ the purchase.
+                example: 500
+              inventoryCost:
+                type: number
+                description: The value of the units in inventory _after_ the purchase.
+                example: 3500
         costAdjustments:
           description: |
             Other cost adjustments which apply to the whole transaction rather than individual items.
@@ -455,10 +491,14 @@ components:
                 description: |
                   The calculated cost of the items, based on the inventory value at the time of the sale.
                   Although this is a positive number, it is _subtracted_ from total inventory value.
-              unitCost:
-                readOnly: true
+              inventoryQuantity:
                 type: number
-                description: The calculated cost-per-unit of the item in the transaction.
+                description: The quantity of the item left in inventory _after_ the sale.
+                example: 200
+              inventoryCost:
+                type: number
+                description: The value of the units left in inventory _after_ the purchase.
+                example: 2500
     
     Manufacture:
       type: object
@@ -520,10 +560,14 @@ components:
                 description: |
                   The calculated cost of the items, based on the inventory value at the time of the sale.
                   Although this is a positive number, it is _subtracted_ from total inventory value.
-              unitCost:
-                readOnly: true
+              inventoryQuantity:
                 type: number
-                description: The calculated cost-per-unit of the item in the transaction.
+                description: The quantity of the item left in inventory _after_ manufacturing.
+                example: 200
+              inventoryCost:
+                type: number
+                description: The value of the units left in inventory _after_ manufacturing.
+                example: 2500
         additionalCosts:
           description: |
             Other costs, such as labor, that are directly related to the manufacturing.

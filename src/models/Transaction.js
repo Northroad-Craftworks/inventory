@@ -1,7 +1,11 @@
 import createError from "http-errors";
 import clone from "rfdc";
+import pluralize from "pluralize";
+import apiSpec from "../lib/api-spec.js";
+import logger from "../lib/logger.js";
 import database from "../lib/database.js";
 import Ledger from "./Ledger.js";
+import { getUnitCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'transaction/';
 
@@ -24,10 +28,18 @@ export class Transaction {
         return new SubClass(document);
     }
 
-    static async record(properties) {
+    static async record(properties, options) {
         const transaction = new this(properties);
-        await transaction.save().catch(error => {
-            if (error.statusCode === 409) throw createError(409, `Transaction ${id} already exists`);
+        const { id } = transaction;
+        if (options?.dryRun) {
+            const exists = await database.get(ID_PREFIX + id).catch(error => {
+                if (error.statusCode === 404) return false;
+                else throw error;
+            });
+            if (exists) throw createError(409, `(Dry run) Transaction '${id}' already exists`);
+        }
+        else await transaction.save().catch(error => {
+            if (error.statusCode === 409) throw createError(409, `Transaction '${id}' already exists`);
             else throw error;
         });
         return transaction;
@@ -76,6 +88,32 @@ export class Transaction {
         return Boolean(this.document.audited);
     }
 
+    get items() {
+        return this.document.items?.map(item => {
+            const { id, quantity, cost, inventoryQuantity, inventoryCost } = item;
+            const unitCost = getUnitCost(quantity, cost);
+            const inventoryUnitCost = getUnitCost(inventoryQuantity, inventoryCost);
+            return { id, quantity, cost, unitCost, inventoryQuantity, inventoryCost, inventoryUnitCost };
+        });
+    }
+
+    get isSaved() {
+        return Boolean(this.document._rev);
+    }
+
+    toJSON() {
+        const properties = apiSpec.components.schemas[this.type].properties;
+        return Object
+            .entries(properties)
+            .reduce((acc, [field, options]) => {
+                if (options.writeOnly) return acc;
+                const value = this[field];
+                acc[field] = value;
+                if (value === undefined) logger.warn(`Missing value for ${field}`);
+                return acc;
+            }, {});
+    }
+
     async save() {
         const document = {
             type: this.type,
@@ -87,6 +125,25 @@ export class Transaction {
 }
 
 export class Purchase extends Transaction {
+    static async record(properties, options) {
+        // Update all the items with their inventory status.
+        // TODO Can this be centralized?
+        await Promise.all(properties.items.map(async item => {
+            const ledger = await Ledger.getInventory(item.id);
+            if (ledger.pending) logger.warn(`${pluralize('transaction', ledger.pending, true)} pending for ${item.id}`);
+
+            // Validate inputs.
+            if (item.quantity <= 0) throw createError(400, 'All item quantities must be positive');
+            if (item.cost <= 0) throw createError(400, 'All item costs must be positive');
+
+            // Calculate updated inventory quantity.
+            item.inventoryQuantity = ledger.inventoryQuantity + item.quantity;
+            if (item.inventoryQuantity <= 0) item.inventoryCost = 0;
+            else if (ledger.inventoryQuantity >= 0) item.inventoryCost = ledger.inventoryCost + item.cost;
+            else item.inventoryCost = item.inventoryQuantity * getUnitCost(item.quantity, item.cost, false);
+        }));
+        return super.record(properties, options);
+    }
 
     constructor(document) {
         super(document);
@@ -96,32 +153,35 @@ export class Purchase extends Transaction {
         return 'Purchase';
     }
 
-    get items() {
-        return clone(this.document.items);
-    }
-
     get costAdjustments() {
         return clone(this.document.costAdjustments);
     }
 }
 
 export class Sale extends Transaction {
-    static async record(properties) {
-        // Update all the items with their current unit cost.
-        await Promise.all(properties.items.map(async saleItem => {
-            // Get the current unit cost of the item in inventory.
-            const { quantity, unitCost } = await Ledger.getInventoryValue(saleItem.id);
+    static async record(properties, options) {
+        // Update all the items with their inventory status.
+        // TODO Can this be centralized?
+        await Promise.all(properties.items.map(async item => {
+            const ledger = await Ledger.getInventory(item.id);
+            const { pending, inventoryQuantity, inventoryCost, inventoryUnitCost } = ledger;
+            if (pending) logger.warn(`Selling '${item.id}' with ${pluralize('transaction', pending, true)} in queue`);
 
-            // Don't allow over-selling.
-            if (quantity < saleItem.quantity) {
-                /* Note: This is NOT guaranteed to result in non-negative inventory.
-                 * If inventory quantity is inaccurate due to latency, a transaction may be allowed
-                 * which will result in negative inventory once corrected by auditing. */
-                throw new Error(`Insufficient quantity to sell ${saleItem.id} (${quantity}/${saleItem.quantity})`);
-            }
-            saleItem.cost = Math.round(saleItem.quantity * unitCost * 100) / 100;
+            // Validate inputs.
+            const { quantity, cost } = item;
+            if (quantity <= 0) throw createError(400, 'All item quantities must be positive');
+            if (cost !== undefined) throw createError(400, 'Cannot specify costs for sale transactions');
+
+            // Calculate cost and inventory.
+            item.cost = Math.round(quantity * inventoryUnitCost * 100) / 100;
+            item.inventoryQuantity = inventoryQuantity - quantity;
+            item.inventoryCost = inventoryCost - item.cost;
+            if (item.inventoryCost < 0) item.inventoryCost = 0;
+
+            // Calculate cogs.
+            item.cogs = item.cost;
         }));
-        return super.record(properties);
+        return super.record(properties, options);
     }
 
     constructor(document) {
@@ -132,9 +192,6 @@ export class Sale extends Transaction {
         return 'Sale';
     }
 
-    get items() {
-        return clone(this.document.items);
-    }
 }
 
 export class Manufacture extends Transaction {
@@ -144,6 +201,10 @@ export class Manufacture extends Transaction {
 
     get type() {
         return 'Manufacture';
+    }
+
+    get items() {
+        // TODO Return a combination of materials and product.
     }
 
     get materials() {
