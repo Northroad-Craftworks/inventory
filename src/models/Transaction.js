@@ -3,7 +3,7 @@ import clone from "rfdc";
 import pluralize from "pluralize";
 import apiSpec from "../lib/api-spec.js";
 import logger from "../lib/logger.js";
-import database from "../lib/database.js";
+import * as database from "../lib/database.js";
 import Ledger from "./Ledger.js";
 import { getUnitCost } from "../lib/helpers.js";
 

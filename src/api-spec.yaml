@@ -48,6 +48,7 @@ paths:
           description: Filter by account
           schema:
             $ref: "#/components/schemas/Item/properties/account"
+            example: null
       responses:
         "200":
           description: All inventory items

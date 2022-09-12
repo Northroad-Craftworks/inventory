@@ -19,53 +19,167 @@ const nanoOpts = {
 };
 export const nano = Nano(nanoOpts);
 
-// Create a class for database operations.
-export class Database {
-    constructor(db) {
-        this.db = db;
-        this.database = nano.use(db);
+// Initialize the database.
+export const db = process.env.COUCHDB_DATABASE || 'inventory';
+logger.debug(`Checking for database ${db}`);
+await nano.db.get(db).catch(async error => {
+    if (error?.scope === 'couch' && error.statusCode === 404) {
+        logger.warn('Database does not exist and will be created');
+        await nano.db.create(db).catch(error => { throw new Error('Unable to create database'); });
     }
+    else throw new Error('Unable to connect to database');
+});
+logger.verbose(`View database documents at ${url.origin}/_utils/#database/${db}/_all_docs`);
+export const database = nano.use(db);
 
-    async initialize() {
-        const { db } = this;
-        logger.debug(`Checking for database ${db}`);
-        await nano.db.get(db).catch(async error => {
-            if (error?.scope === 'couch' && error.statusCode === 404) {
-                logger.warn('Database does not exist and will be created');
-                await nano.db.create(db).catch(error => { throw new Error('Unable to create database'); });
+class DatabaseError extends Error {
+    constructor(baseError) {
+        super(baseError);
+        this.name = "DatabaseError";
+
+        // Most status codes should not be returned to users.
+        const allowedStatuses = [404, 409, 410];
+        if (allowedStatuses.includes(baseError.statusCode)) this.statusCode = baseError.statusCode;
+    }
+}
+function handleError(error) {
+    throw new DatabaseError(error);
+}
+
+/**
+ * Get all documents from the database.
+ * @returns {Promise<object[]>}
+ */
+export async function list(options) {
+    return database.list(options).catch(handleError);
+}
+
+/**
+ * Get a document from the database.
+ * @param {string} docId - Document ID to fetch
+ * @returns {Promise<object>}
+ */
+export async function get(docId) {
+    return await database.get(docId).catch(handleError);
+}
+
+/**
+ * Save the given document to the database.
+ * @param {object} document - Document to save to the database
+ * @param {string} document._id - Document ID
+ * @param {string} [document._rev] - Document Revision
+ * @returns {Promise<string>} New revision of the saved document
+ */
+export async function insert(document) {
+    if (!document?._id) throw new DatabaseError('Missing `_id` for document');
+    const { rev } = await database.insert(document).catch(handleError);
+    document._rev = rev;
+    return rev;
+}
+
+/**
+ * Query a pre-configured view in the database.
+ * @param {DesignDoc} designDoc - Design document that defines the view
+ * @param {string} view - Name of the view to query
+ * @param {object} options - See `params` at https://www.npmjs.com/package/nano#dbviewdesignname-viewname-params-callback
+ * @returns {Promise<CloudantV1.ViewResult>}
+ */
+export async function view(designDoc, view, options) {
+    // Validate the design doc and view.
+    if (!designDoc) throw new DatabaseError('Missing design doc id for view query');
+    if (!(designDoc instanceof DesignDoc)) throw new DatabaseError('Invalid design doc for view query');
+    if (!view) throw new DatabaseError('Missing view name for view query');
+    if (!designDoc.hasView(view)) throw new DatabaseError('The specified view is not in the design doc');
+
+    // Don't attempt to use the design doc until it's ready.
+    await designDoc.ready;
+
+    // Fetch the view.
+    return database.view(designDoc.name, view, options).catch(handleError);
+}
+
+/**
+ * A design doc defines views and indexes in the database.
+ * This helper class makes it easier to define a design doc and update it at runtime.
+ */
+export class DesignDoc {
+    constructor(name, template) {
+        if (!name) throw new DatabaseError('Cannot create a design doc without a name');
+        this.name = name;
+
+        // Parse the template into a valid format for the design document.
+        const parseToDocument = (item) => {
+            if (typeof item === 'object') {
+                const result = {};
+                Object.entries(item).forEach(([key, value]) => {
+                    result[key] = parseToDocument(value);
+                });
+                return result;
             }
-            else throw new Error('Unable to connect to database');
+            if (typeof item === 'function') {
+                return item.toString();
+            }
+            else return item;
+        };
+        this.document = { _id: `_design/${name}`, ...parseToDocument(template) };
+
+        // Update the design doc in the database asyncronously.
+        this.ready = this.assert();
+    }
+
+    /**
+     * Ensure that this design doc exists in the database.
+     * If it doesn't exist, it is created.
+     * If it does exist, but is different, it is updated.
+     * @returns {Promise<void>}
+     */
+    async assert() {
+        logger.debug(`Asserting design document: ${this.name}`);
+        const existingDoc = await database.get(this.document._id).catch(error => {
+            // Ignore 404s, since we'll create the document.
+            if (error.statusCode === 404) return;
+            throw new DatabaseError(error);
         });
-        logger.verbose(`View database documents at ${url.origin}/_utils/#database/${db}/_all_docs`);
+
+        // Compare the existing document to the desired one.
+        if (existingDoc) {
+            const stringifyDoc = (doc) => {
+                const { _id, _rev, ...rest } = doc;
+                return JSON.stringify(rest);
+            };
+            if (stringifyDoc(existingDoc) === stringifyDoc(this.document)) {
+                logger.debug(`No changes required for design document ${this.name}@${existingDoc._rev}`);
+                return;
+            }
+        }
+
+        // Publish a new or updated version.
+        this.document._rev = existingDoc?._rev;
+        await insertDocument(this.document)
+            .then(revision => logger.info(`Updated design document ${this.name}@${revision}`))
+            .catch(error => {
+                if (error.statusCode !== 409) throw error;
+                logger.debug(`Another instance already updated design document ${this.name}`);
+            });
     }
 
-    async list(options){
-        return this.database.list(options);
-        // TODO Handle/translate errors.
-    }
-
-    async get(id){
-        return this.database.get(id);
-        // TODO Handle/translate errors.
-    }
-
-    async insert(document){
-        const response = await this.database.insert(document);
-        // TODO Handle/translate errors.
-        this.document._rev = response.rev;
-        return response;
-    }
-
-    async view(design, view, options){
-        return this.database.view(design, view, options).catch(error => {
-            // All view errors are, by definition, internal errors.
-            error.statusCode = 500;
-            throw error;
-        })
+    /**
+     * Check whether this design doc contains a view with the given name.
+     * @param {string} view - View name to check
+     * @returns {boolean} Whether or not this design doc defines that view
+     */
+    hasView(view) {
+        return Boolean(this.document?.views?.[view]?.map);
     }
 }
 
-// Initialize the default database.
-export const database = new Database(process.env.COUCHDB_DATABASE || 'inventory');
-await database.initialize();
-export default database;
+
+/**
+ * This is a placeholder function for the emit function in Couchdb.
+ * It should never be called, and is included for code completion.
+ * @param {any} key - Key to emit in the view table
+ * @param {any} value - Value to associate with the key
+ */
+export function emit(key, value) {
+    throw new Error("The placeholder emit function should never be called");
+}

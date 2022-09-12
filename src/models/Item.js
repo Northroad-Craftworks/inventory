@@ -1,7 +1,6 @@
 import createError from "http-errors";
 import apiSpec from "../lib/api-spec.js";
-import database from "../lib/database.js";
-import logger from '../lib/logger.js';
+import * as database from "../lib/database.js";
 import { formatCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'item/';
@@ -87,7 +86,7 @@ export default class Item {
         const { _id, _rev } = this.document;
         if (_rev) {
             delete this.document._rev;
-            await database.destroy(_id, _rev);
+            await destroyDocument(_id, _rev);
         }
     }
 
