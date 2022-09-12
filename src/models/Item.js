@@ -2,10 +2,9 @@ import createError from "http-errors";
 import apiSpec from "../lib/api-spec.js";
 import database from "../lib/database.js";
 import logger from '../lib/logger.js';
+import { formatCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'item/';
-
-const costFormatter = new Intl.NumberFormat('en-us', { style: 'currency', currency: 'usd' });
 
 export default class Item {
 
@@ -16,7 +15,7 @@ export default class Item {
         });
         return new Item(document);
     }
-    
+
     static async list() {
         // TODO Do this with a view instead.
         const results = await database.list({ include_docs: true });
@@ -92,12 +91,11 @@ export default class Item {
         }
     }
 
-
     toString() {
         const label = `${this.name || this.id}:`;
         if (!this.quantity) return `${label} Out of Stock`;
-        const totalCost = costFormatter.format(this.totalCost);
-        const unitCosts = costFormatter.format(this.unitCost);
+        const totalCost = formatCost(this.totalCost);
+        const unitCosts = formatCost(this.unitCost);
         return `${label} ${this.quantity} x ${unitCosts}/${this.unit} = ${totalCost}`;
     }
 

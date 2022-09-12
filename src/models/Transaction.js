@@ -9,9 +9,15 @@ import { getUnitCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'transaction/';
 
-function getImplementor(type) {
-    switch (type) {
-        case 'Purchase': return Purchase;
+/**
+ * Instantiate transaction subclasses from a document, based on the `type` field.
+ * @param {object} document 
+ * @returns {Purchase|Sale}
+ */
+function newFromDocument(document){
+    switch (document.type) {
+        case 'Purchase': return new Purchase(document);
+        case 'Sale': return new Sale(document);
         // TODO Add other classes
         default: throw new Error(`No class available to represent a ${type} transaction`);
     }
@@ -24,8 +30,7 @@ export class Transaction {
             if (error.statusCode === 404) throw createError(404, `Transaction ${id} does not exist`);
             else throw error;
         });
-        const SubClass = getImplementor(document.type);
-        return new SubClass(document);
+        return newFromDocument(document);
     }
 
     static async record(properties, options) {

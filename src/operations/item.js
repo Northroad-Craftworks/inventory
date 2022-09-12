@@ -10,6 +10,7 @@ export async function listItems(req, res, next) {
     const items = await Item.list();
 
     // Apply filters.
+    // TODO Handle these in the item class.
     const hiddenFilter = req.query?.hidden;
     const accountFilter = req.query?.account;
     const results = items.filter(item => {

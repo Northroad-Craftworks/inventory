@@ -1,4 +1,9 @@
 /**
+ * A helper function to format a number into a US currency.
+ */
+export const formatCost = new Intl.NumberFormat('en-us', { style: 'currency', currency: 'usd' }).format;
+
+/**
  * A helper function to calculate the unit cost based of a quantity and cost.
  * @param {number} quantity
  * @param {number} cost
