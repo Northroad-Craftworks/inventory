@@ -8,14 +8,6 @@ export const ID_PREFIX = 'item/';
 const costFormatter = new Intl.NumberFormat('en-us', { style: 'currency', currency: 'usd' });
 
 export default class Item {
-    static async list() {
-        // TODO Do this with a view instead.
-        const results = await database.list({ include_docs: true });
-        const items = results.rows
-            .filter(row => row.id.startsWith(ID_PREFIX))
-            .map(row => new Item(row.doc));
-        return items;
-    }
 
     static async get(id) {
         const document = await database.get(ID_PREFIX + id).catch(error => {
@@ -23,6 +15,15 @@ export default class Item {
             else throw error;
         });
         return new Item(document);
+    }
+    
+    static async list() {
+        // TODO Do this with a view instead.
+        const results = await database.list({ include_docs: true });
+        const items = results.rows
+            .filter(row => row.id.startsWith(ID_PREFIX))
+            .map(row => new Item(row.doc));
+        return items;
     }
 
     static async create(id, properties) {
