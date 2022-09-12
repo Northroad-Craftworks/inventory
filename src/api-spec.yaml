@@ -7,12 +7,12 @@ info:
 tags:
   - name: Service
     description: Information about the service's status
+  - name: Ledger
+    description: View the ledger for individual items or inventory as a whole
   - name: Manage Items
     description: Manage inventory items
   - name: Record Transactions
     description: Buy, sell, manufacture, and adjust items in inventory
-  - name: Ledger
-    description: View the ledger for individual items or inventory as a whole
 
 paths:
   /status:
@@ -136,6 +136,29 @@ paths:
           description: Delete successfully
         default:
           $ref: "#/components/responses/Error"
+  
+  /item/{itemId}/ledger:
+    parameters:
+      - $ref: "#/components/parameters/itemId"
+    get:
+      operationId: getItemLedger
+      summary: Get the inventory ledger for an item
+      tags: [Ledger]
+      responses:
+        "200":
+          description: The selected ledger view, in JSON format.
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Ledger"
+            "text/csv":
+              schema:
+                description: The selected ledger view, in CSV format.
+            "text/plain":
+              schema:
+                description: The selected ledger view, as human-readable text.
+        default:
+          $ref: "#/components/responses/Error"
 
   /buy:
     parameters:
@@ -224,7 +247,7 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
-  /adjust:
+  /count:
     parameters:
       - $ref: "#/components/parameters/dryRunQuery"
     post:
@@ -236,48 +259,6 @@ paths:
         "501":
           description: Not implemented
   
-  /ledger:
-    parameters:
-      - $ref: "#/components/parameters/itemIdQuery"
-    get:
-      operationId: getLedger
-      summary: Get entries from the ledger
-      tags: [Ledger]
-      responses:
-        "200":
-          description: The ledger of transactions
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Ledger"
-            "text/plain":
-              schema:
-                description: A text list of all the ledger entries
-        default:
-          $ref: "#/components/responses/Error"
-  
-  /transactions:
-    get:
-      operationId: listTransactions
-      summary: List all the transactions
-      tags: [Ledger]
-      responses:
-        "200":
-          description: A list of transactions
-          content:
-            "application/json":
-              schema:
-                type: array
-                items:
-                  oneOf:
-                    - $ref: "#/components/schemas/Purchase"
-                    - $ref: "#/components/schemas/Sale"
-                    - $ref: "#/components/schemas/Manufacture"
-                  discriminator:
-                    propertyName: type
-        default:
-          $ref: "#/components/responses/Error"
-
   /transaction/{transactionId}:
     parameters:
       - $ref: "#/components/parameters/transactionId"
@@ -599,63 +580,64 @@ components:
             
     Ledger:
       readOnly: true
-      type: array
+      type: object
       description: A list of all the transactions which have affected an item, including calculated total inventory values.
-      items:
-        type: object
-        readOnly: true
-        description: A single ledger entry, describing a transaction and updating the value of the inventory.
-        required: [date, id, type, quantity, cost, unitCost, totalQuantity, totalCost, totalUnitCost]
-        additionalProperties: false
-        properties:
-          date:
-            type: string
-            format: date-time
-            description: The timestamp of the transaction.
-          id:
-            type: string
-            description: Unique ID for the transaction.
-            pattern: "[a-z0-9-]+"
-          type:
+      additionalProperties: false
+      properties:
+        itemId:
+          $ref: "#/components/schemas/Item/properties/id"
+        startDate:
+          type: string
+          format: date-time
+          description: The date used to filter the start of the ledger, or "Beginning".
+        endDate:
+          type: string
+          format: date-time
+          description: The date used to filter the end of the ledger, or the date it was fetched.
+        entries:
+          type: array
+          description: All the entries in the ledger, or the returned portion of it.
+          items:
+            type: object
             readOnly: true
-            type: string
-            description: Type of transaction.
-          description:
-            type: string
-            description: A short description of the transaction.
-            example: ""
-          user:
-            readOnly: true
-            type: string
-            description: The user who entered the transaction.
-            example: anonymous
-            # TODO Define a user format
-          audited:
-            readOnly: true
-            type: boolean
-            description: Whether or not this transaction has been audited for accuracy.
-          itemId:
-            $ref: "#/components/schemas/Item/properties/id"
-            readOnly: false
-            description: The item ID of the item affected.
-          quantity:
-            type: number
-            description: |
-              The quantity of items in the transaction, in relation to inventory.
-              Positive numbers represent purchases and manufactured items, adding to inventory quantity.
-              Negative numbers represent sales and consumed items, subtracting from inventory quantity.
-          cost:
-            type: number
-            description: |
-              The value of items in the transaction, in relation to inventory value.
-              Positive numbers represent purchases and manufactured items, adding to inventory value.
-              Negative numbers represent sales and consumed items, subtracting from inventory value.
-          unitCost:
-            type: number
-            minimum: 0
-            description: |
-              The cost-per-unit for items in the transaction.
-              This is always a positive number, as it's derived from `value / quantity` and those must have the same sign.      
+            description: A single ledger entry, describing a transaction and updating the value of the inventory.
+            required: [date, id, type, quantity, cost, unitCost, totalQuantity, totalCost, totalUnitCost]
+            additionalProperties: false
+            properties:
+              date:
+                type: string
+                format: date-time
+                description: The timestamp of the transaction.
+              transaction:
+                type: string
+                description: Unique ID for the transaction.
+                pattern: "[a-z0-9-]+"
+              type:
+                readOnly: true
+                type: string
+                description: Type of transaction.
+              quantity:
+                type: number
+                description: The quantity of items in the transaction, in relation to inventory.
+              cost:
+                type: number
+                description: The value of items in the transaction, in relation to inventory value.
+              unitCost:
+                type: number
+                description: The cost-per-unit for items in the transaction.
+              inventoryQuantity:
+                type: number
+                description: The quantity of the item in inventory _after_ the transaction.
+              inventoryCost:
+                type: number
+                description: The value of the units in inventory _after_ the transaction.
+              inventoryUnitCost:
+                type: number
+                description: The effective cost-per-unit of the item in inventory _after_ the transaction.
+              audited:
+                type: string
+                format: date-time
+                description: When the transaction was last audited for accuracy.
 
     Item:
       type: object

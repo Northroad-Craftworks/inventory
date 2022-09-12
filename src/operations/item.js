@@ -3,7 +3,8 @@ import Item from '../models/Item.js';
 
 export async function listItems(req, res, next) {
     // Pre-validate the accepts header;
-    const accepts = req.accepts(['json', 'text']);
+    // TODO Support CSV.
+    const accepts = req.accepts(['json', 'text/plain']);
     if (!accepts) throw createError(406);
 
     // Get all items.
@@ -21,7 +22,7 @@ export async function listItems(req, res, next) {
 
     // Return the results in the accepted format.
     if (accepts === 'json') res.json(results);
-    else if (accepts === 'text') res.send(results.join('\n'));
+    else if (accepts === 'text/plain') res.type('text/plain').send(results.join('\n'));
     else throw new Error('Impossible MIME type match');
 }
 
