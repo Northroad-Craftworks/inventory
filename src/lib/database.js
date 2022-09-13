@@ -1,4 +1,5 @@
 import Nano from 'nano';
+import pluralize from 'pluralize';
 import logger from './logger.js';
 
 const url = new URL(process.env.COUCHDB_URL || 'http://localhost:5984');
@@ -96,6 +97,32 @@ export async function view(designDoc, view, options) {
 
     // Fetch the view.
     return database.view(designDoc.name, view, options).catch(handleError);
+}
+
+export async function find(options) {
+    if (!options?.selector) throw new DatabaseError('A selector is required for queries');
+    const query = {
+        ...options,
+        execution_stats: true
+    };
+    const response = await database.find(query);
+    if (response.warning) logger.warn(`CouchDB.find warning: ${response.warning}`);
+    if (response.execution_stats) {
+        const {
+            execution_time_ms: time,
+            results_returned: returned,
+            total_docs_examined: examined
+        } = response.execution_stats;
+        const message = `Took ${time}ms to find ${pluralize('document', returned, true)} (Examined ${examined})`;
+        if (time > Number(process.env.DATABASE_SLOW_MS || 10)) logger.warn(message);
+        else logger.debug(message);
+    }
+    
+    // If the response returned the limit requested, add a shortcut to get more.
+    if (response?.docs?.length === (query.limit || 25)) {
+        response.getNextPage = async () => find({ ...query, bookmark: response.bookmark })
+    }
+    return response;
 }
 
 /**

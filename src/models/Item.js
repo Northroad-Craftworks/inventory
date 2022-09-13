@@ -31,12 +31,23 @@ export default class Item {
     }
 
     static async list(options) {
-        const filterEntries = Object.entries(options?.filter || {}).filter(([_, value]) => value !== undefined);
-        const results = await database.view(itemIndex, 'all', { include_docs: true });
-        const items = results.rows
-            // TODO Filter at the database-side, with a query.
-            .filter(row => filterEntries.every(([property, value]) => row.doc[property] === value))
-            .map(row => new Item(row.doc));
+        const query = {
+            limit: 50,
+            selector: options?.filter || {},
+            use_index: `${itemIndex.name}/all`
+        }
+
+        // Get the first set of items.
+        let results = await database.find(query);
+        const items = results.docs.map(doc => new Item(doc));
+
+        // Keep getting pages until there are no more pages.
+        while (results.getNextPage){
+            results = await results.getNextPage();
+            items.push(...results.docs.map(doc => new Item(doc)));
+        }
+
+        // Return
         return items;
     }
 

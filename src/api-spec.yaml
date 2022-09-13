@@ -48,7 +48,6 @@ paths:
           description: Filter by account
           schema:
             $ref: "#/components/schemas/Item/properties/account"
-            example: null
       responses:
         "200":
           description: All inventory items
@@ -662,7 +661,6 @@ components:
             - Raw Materials
             - In-Progress
             - Finished
-          default: Raw Materials
         unit:
           type: string
           description: |
