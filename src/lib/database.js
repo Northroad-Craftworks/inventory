@@ -109,12 +109,14 @@ export class DesignDoc {
 
         // Parse the template into a valid format for the design document.
         const parseToDocument = (item) => {
+            if (Array.isArray(item)) {
+                return item.map(value => parseToDocument(value));
+            }
             if (typeof item === 'object') {
-                const result = {};
-                Object.entries(item).forEach(([key, value]) => {
-                    result[key] = parseToDocument(value);
-                });
-                return result;
+                return Object.entries(item).reduce((acc, [key, value]) => {
+                    acc[key] = parseToDocument(value);
+                    return acc;
+                }, {});
             }
             if (typeof item === 'function') {
                 return item.toString();

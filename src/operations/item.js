@@ -8,21 +8,11 @@ export async function listItems(req, res, next) {
     if (!accepts) throw createError(406);
 
     // Get all items.
-    const items = await Item.list();
-
-    // Apply filters.
-    // TODO Handle these in the item class.
-    const hiddenFilter = req.query?.hidden;
-    const accountFilter = req.query?.account;
-    const results = items.filter(item => {
-        if (hiddenFilter !== undefined && item.hidden !== hiddenFilter) return false;
-        if (accountFilter !== undefined && item.account !== accountFilter) return false;
-        return true;
-    });
+    const items = await Item.list({ filter: req.query });
 
     // Return the results in the accepted format.
-    if (accepts === 'json') res.json(results);
-    else if (accepts === 'text/plain') res.type('text/plain').send(results.join('\n'));
+    if (accepts === 'json') res.json(items);
+    else if (accepts === 'text/plain') res.type('text/plain').send(items.join('\n'));
     else throw new Error('Impossible MIME type match');
 }
 
@@ -48,5 +38,5 @@ export async function deleteItem(req, res) {
     // TODO Check ledgers to make sure the item can be deleted.
     if (item.quantity) throw createError(403, 'Cannot delete an item that has inventory in stock');
     await item.destroy();
-    res.send({ok: true});
+    res.send({ ok: true });
 }

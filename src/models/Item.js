@@ -5,6 +5,21 @@ import { formatCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'item/';
 
+const itemIndex = new database.DesignDoc('item-index:v1', {
+    language: 'query',
+    views: {
+        all: {
+            map: {
+                fields: { _id: 'asc' },
+                partial_filter_selector: { _id: { '$regex': '^item/' } }
+            },
+            options: {
+                def: { fields: ['_id'] }
+            }
+        }
+    }
+});
+
 export default class Item {
 
     static async get(id) {
@@ -15,11 +30,12 @@ export default class Item {
         return new Item(document);
     }
 
-    static async list() {
-        // TODO Do this with a view instead.
-        const results = await database.list({ include_docs: true });
+    static async list(options) {
+        const filterEntries = Object.entries(options?.filter || {}).filter(([_, value]) => value !== undefined);
+        const results = await database.view(itemIndex, 'all', { include_docs: true });
         const items = results.rows
-            .filter(row => row.id.startsWith(ID_PREFIX))
+            // TODO Filter at the database-side, with a query.
+            .filter(row => filterEntries.every(([property, value]) => row.doc[property] === value))
             .map(row => new Item(row.doc));
         return items;
     }
