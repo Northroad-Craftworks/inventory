@@ -201,14 +201,3 @@ export class DesignDoc {
         return Boolean(this.document?.views?.[view]?.map);
     }
 }
-
-
-/**
- * This is a placeholder function for the emit function in Couchdb.
- * It should never be called, and is included for code completion.
- * @param {any} key - Key to emit in the view table
- * @param {any} value - Value to associate with the key
- */
-export function emit(key, value) {
-    throw new Error("The placeholder emit function should never be called");
-}
