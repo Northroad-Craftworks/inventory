@@ -144,6 +144,7 @@ paths:
       operationId: getItemLedger
       summary: Get the inventory ledger for an item
       tags: [Ledger]
+      deprecated: true
       responses:
         "200":
           description: The selected ledger view, in JSON format.
@@ -247,17 +248,65 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
+  /adjust:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
+    post:
+      operationId: recordAdjustment
+      summary: Manually adjust inventory for loss, damage, or waste
+      tags: [Record Transactions]
+      deprecated: true
+      requestBody:
+        description: Count details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Adjustment"
+      responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+
   /count:
     parameters:
       - $ref: "#/components/parameters/dryRunQuery"
     post:
-      operationId: recordAuditTransaction
-      summary: Manually adjust inventory items as the result of loss, damage, waste, or audits
+      operationId: recordCount
+      summary: Count physical inventory and automatically adjust stored quantity
       tags: [Record Transactions]
       deprecated: true
+      requestBody:
+        description: Count details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Count"
       responses:
-        "501":
-          description: Not implemented
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
   
   /transaction/{transactionId}:
     parameters:
@@ -272,12 +321,7 @@ paths:
           content:
             "application/json":
               schema:
-                oneOf:
-                  - $ref: "#/components/schemas/Purchase"
-                  - $ref: "#/components/schemas/Sale"
-                  - $ref: "#/components/schemas/Manufacture"
-                discriminator:
-                  propertyName: type
+                $ref: "#/components/schemas/Transaction"
         default:
           $ref: "#/components/responses/Error"
 
@@ -384,6 +428,7 @@ components:
             - $ref: "#/components/schemas/Sale"
             - $ref: "#/components/schemas/Manufacture"
             - $ref: "#/components/schemas/Count"
+            - $ref: "#/components/schemas/Adjustment"
           discriminator:
             propertyName: type
         
@@ -668,7 +713,111 @@ components:
                 minimum: 0
                 description: The number of units counted in inventory.
                 example: 250
-            
+    
+    Adjustment:
+      type: object
+      description: |
+        An record of a manual inventory adjustment.
+        An adjustment can change the quantity or cost of inventory items as the result of loss, damage, waste, or similar events.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Count]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: count-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the adjustment occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the adjustment.
+          example: "Damaged widgets"
+        items:
+          type: array
+          description: A list of all the items counted.
+          items:
+            type: object
+            required: [id]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the item counted.
+              quantity:
+                type: number
+                description: The change to the number of units in inventory.
+                example: -10
+                default: 0
+              cost:
+                type: number
+                description: |
+                  The change in total value of units in inventory.
+                  If not specified, the cost will be adjusted based on the current unit cost.
+                example: null
+
+    Item:
+      type: object
+      required: [id]
+      additionalProperties: false
+      properties:
+        id:
+          readOnly: true
+          type: string
+          description: Unique ID or SKU of the material, part, or product.
+          pattern: "[a-z0-9-]+"
+          example: widget-blue-2in
+        name:
+          type: string
+          description: Friendly name for display.
+          example: 2" Blue Widget
+        account:
+          type: string
+          description: The asset account associated with the item.
+          enum:
+            - Raw Materials
+            - In-Progress
+            - Finished
+        unit:
+          type: string
+          description: |
+            Unit of measure for the material.
+
+            Examples:
+            - each
+            - bd.ft.
+            - fl.oz.
+          default: each
+        quantity:
+          readOnly: true
+          type: number
+          description: The quantity of the item currently in inventory.
+          example: 2
+        totalCost:
+          readOnly: true
+          type: number
+          description: The total cost of all the units currently in inventory.
+          example: 4.00
+        unitCost:
+          readOnly: true
+          type: number
+          description: The per-unit cost of each unit currently in inventory.
+          example: 2.00
+        hidden:
+          type: boolean
+          description: If `true`, the item should be hidden from selection lists and displays.
+          default: false
+
     Ledger:
       readOnly: true
       type: object
@@ -729,55 +878,3 @@ components:
                 type: string
                 format: date-time
                 description: When the transaction was last audited for accuracy.
-
-    Item:
-      type: object
-      required: [id]
-      additionalProperties: false
-      properties:
-        id:
-          readOnly: true
-          type: string
-          description: Unique ID or SKU of the material, part, or product.
-          pattern: "[a-z0-9-]+"
-          example: widget-blue-2in
-        name:
-          type: string
-          description: Friendly name for display.
-          example: 2" Blue Widget
-        account:
-          type: string
-          description: The asset account associated with the item.
-          enum:
-            - Raw Materials
-            - In-Progress
-            - Finished
-        unit:
-          type: string
-          description: |
-            Unit of measure for the material.
-
-            Examples:
-            - each
-            - bd.ft.
-            - fl.oz.
-          default: each
-        quantity:
-          readOnly: true
-          type: number
-          description: The quantity of the item currently in inventory.
-          example: 2
-        totalCost:
-          readOnly: true
-          type: number
-          description: The total cost of all the units currently in inventory.
-          example: 4.00
-        unitCost:
-          readOnly: true
-          type: number
-          description: The per-unit cost of each unit currently in inventory.
-          example: 2.00
-        hidden:
-          type: boolean
-          description: If `true`, the item should be hidden from selection lists and displays.
-          default: false
