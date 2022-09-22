@@ -168,7 +168,7 @@ paths:
       summary: Record the purchase of new inventory
       tags: [Record Transactions]
       requestBody:
-        description: Transaction details
+        description: Purchase details
         content:
           "application/json":
             schema:
@@ -179,13 +179,13 @@ paths:
           content:
             "application/json":
               "schema":
-                $ref: "#/components/schemas/Purchase"
+                $ref: "#/components/schemas/Transaction"
         "201":
           description: "Transaction created"
           content:
             "application/json":
               "schema":
-                $ref: "#/components/schemas/Purchase"
+                $ref: "#/components/schemas/Transaction"
         default:
           $ref: "#/components/responses/Error"
 
@@ -197,7 +197,7 @@ paths:
       summary: Record the sale of inventory to customers
       tags: [Record Transactions]
       requestBody:
-        description: Transaction details
+        description: Sale details
         content:
           "application/json":
             schema:
@@ -208,13 +208,13 @@ paths:
           content:
             "application/json":
               "schema":
-                $ref: "#/components/schemas/Sale"
+                $ref: "#/components/schemas/Transaction"
         "201":
           description: "Transaction created"
           content:
             "application/json":
               "schema":
-                $ref: "#/components/schemas/Sale"
+                $ref: "#/components/schemas/Transaction"
         default:
           $ref: "#/components/responses/Error"
 
@@ -226,7 +226,7 @@ paths:
       summary: Manufacture new inventory items from existing ones
       tags: [Record Transactions]
       requestBody:
-        description: Transaction details
+        description: Manufacturing details
         content:
           "application/json":
             schema:
@@ -237,13 +237,13 @@ paths:
           content:
             "application/json":
               "schema":
-                $ref: "#/components/schemas/Manufacture"
+                $ref: "#/components/schemas/Transaction"
         "201":
           description: "Transaction created"
           content:
             "application/json":
               "schema":
-                $ref: "#/components/schemas/Manufacture"
+                $ref: "#/components/schemas/Transaction"
         default:
           $ref: "#/components/responses/Error"
 
@@ -325,11 +325,11 @@ components:
 
 
   schemas:
-    Purchase:
+    Transaction:
+      readOnly: true
       type: object
-      description: A transaction which purchases materials or items for resale.
-      required: [id, type, description, user, items]
-      additionalProperties: false
+      description: The purchase, sale, auditing, or manufacturing of items.
+      required: [date, id, user, adjustments, event]
       properties:
         date:
           type: string
@@ -339,10 +339,6 @@ components:
           type: string
           description: Unique ID for the transaction.
           pattern: "[a-z0-9-]+"
-        type:
-          readOnly: true
-          type: string
-          description: Type of transaction.
         description:
           type: string
           description: A short description of the transaction.
@@ -357,12 +353,77 @@ components:
           readOnly: true
           type: boolean
           description: Whether or not this transaction has been audited for accuracy.
+        adjustments:
+          readOnly: true
+          type: array
+          description: A list of all the adjustments made to inventory based on this transaction.
+          items:
+            type: object
+            required: [id, quantity, cost]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                description: The item ID of the item adjusted.
+              quantity:
+                type: number
+                description: |
+                  The amount of the item involved, relative to the total inventory.
+                  Positive values increase total inventory and usually represent purchases or manufactured items.
+                  Negative values decrease total inventory and usually represent sales or consumed items.
+                example: 250
+              cost:
+                type: number
+                description: |
+                  The total cost of all units -- including tax, shipping, or other adjustments -- relative to total inventory.
+                  The sign of this value will always be the same as the `quantity`.
+                example: 1500
+        event:
+          oneOf:
+            - $ref: "#/components/schemas/Purchase"
+            - $ref: "#/components/schemas/Sale"
+            - $ref: "#/components/schemas/Manufacture"
+            - $ref: "#/components/schemas/Count"
+          discriminator:
+            propertyName: type
+        
+    Purchase:
+      type: object
+      description: |
+        An record of purchasing materials or items for resale.
+        Purchasing items adjusts the unit cost of that item, as a weighted average with existing inventory.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Purchase]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: purchase-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the event occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the purchase.
+          example: "Bought widgets from ACME"
+        vendor:
+          type: string
+          description: ID or name of the vendor where the items were purchased.
         items:
           type: array
           description: A list of all the items purchased.
           items:
             type: object
-            required: [quantity, cost]
+            required: [id, quantity, cost]
             additionalProperties: false
             properties:
               id:
@@ -371,88 +432,94 @@ components:
                 description: The item ID of the item purchased.
               quantity:
                 type: number
-                minimum: 1
-                description: |
-                  The amount of the item purchased
-                  Must be a positive number, as it increases inventory.
+                minimum: 0.01
+                description: The number of units purchased.
                 example: 250
               cost:
                 type: number
-                minimum: 0
-                description: The **total** price of all units, excluding tax and shipping.
+                minimum: 0.01
+                description: The total cost of all units purchased, _excluding_ tax and shipping.
                 example: 1500
-              inventoryQuantity:
-                type: number
-                description: The quantity of the item in inventory _after_ the purchase.
-                example: 500
-              inventoryCost:
-                type: number
-                description: The value of the units in inventory _after_ the purchase.
-                example: 3500
         costAdjustments:
           description: |
-            Other cost adjustments which apply to the whole transaction rather than individual items.
-            This includes additional costs, such as taxes or shipping, as well as discounts or credits.
+            Other costs and discounts which apply to the whole transaction rather than individual items.
+            This includes additional costs, such as taxes or shipping, as well as cart-wide discounts or credits.
             These adjusments are added to cost of items (proportionally to their costs) when determining inventory value.
+
+            For example: Let's say Blue Widgets are purchased for $100, Green Widgets were purchased for $300, and shipping costs $20.
+            Then Blue Widgets will be assigned 25% (`100 / 400`) the additional cost, for a total value of $105 (`$100 + 0.25 * $20`),
+            and Green Widgets will be assigned 75% (`300 / 400`) the additional cost, for a total value of $315 (`$300 + 0.75 * $20`).
           type: array
           items:
             type: object
-            required: [name, cost]
-            additionalProperties:
-              description: Additional information that may be needed for records, such as tax jurisdiction.
-              type: string
+            required: [type, cost]
+            additionalProperties: false
             properties:
-              name:
+              type:
                 type: string
-                description: Name of the additional cost or discount, for reporting
+                description: Type of adjustment.
+                enum:
+                  - taxes
+                  - shipping
+                  - discount
+                  - credit
+                  - other
               cost:
                 type: number
                 description: |
-                  Value of the additional cost.
-                  Positive numbers represent fees such as taxes and shipping
-                  Negative numbers represent discounts or refunds.
-            example:
-              name: shipping
+                  Value of the additional cost or discount.
+                  Positive numbers increase costs and represent fees such as taxes and shipping
+                  Negative numbers decrease costs and represent discounts or refunds.
+              details:
+                type: string
+                description: |
+                  Additional details about the type of adjustment, such as:
+                  - Tax jurisdiction
+                  - Shipping method
+                  - Discount/coupon code
+                  - Credit source
+          example:
+            - type: taxes
+              cost: 75
+              details: Maine
+            - type: shipping
               cost: 8.99
     
     Sale:
       type: object
-      description: A transaction which sells items
-      required: [id, type, description, user, items]
-      additionalProperties: false
+      description: An record of selling items.
+      required: [type, id, items]
       properties:
-        date:
-          type: string
-          format: date-time
-          description: The timestamp of the transaction.
-        id:
-          type: string
-          description: Unique ID for the transaction.
-          pattern: "[a-z0-9-]+"
         type:
           readOnly: true
           type: string
           description: Type of transaction.
+          enum: [Sale]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: sale-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the event occured. (If not provided, defaults to the current date.)
         description:
+          writeOnly: true
           type: string
-          description: A short description of the transaction.
-          example: ""
-        user:
-          readOnly: true
+          description: A short description of the purchase.
+          example: "Sold widgets to Alice"
+        customer:
           type: string
-          description: The user who entered the transaction.
-          example: anonymous
-          # TODO Define a user format
-        audited:
-          readOnly: true
-          type: boolean
-          description: Whether or not this transaction has been audited for accuracy.
+          description: ID or name of the customer to whom the items were sold.
         items:
           type: array
           description: A list of all the items sold.
           items:
             type: object
-            required: [quantity]
+            required: [id, quantity]
             additionalProperties: false
             properties:
               id:
@@ -461,61 +528,40 @@ components:
                 description: The item ID of the item sold.
               quantity:
                 type: number
-                minimum: 1
-                description: |
-                  The amount of the item sold.
-                  Although this is a positive number, it is _subtracted_ from total inventory quantity.
-              cost:
-                readOnly: true
-                type: number
-                minimum: 0
-                description: |
-                  The calculated cost of the items, based on the inventory value at the time of the sale.
-                  Although this is a positive number, it is _subtracted_ from total inventory value.
-              inventoryQuantity:
-                type: number
-                description: The quantity of the item left in inventory _after_ the sale.
-                example: 200
-              inventoryCost:
-                type: number
-                description: The value of the units left in inventory _after_ the purchase.
-                example: 2500
+                minimum: 0.01
+                description: The number of units sold.
+                example: 100
     
     Manufacture:
       type: object
       description: |
-        A transaction which manufactures one item from materials.
+        A record of manufacturing an item from materials.
         Multiple different `materials` may be consumed and the values of each are determined at the time of the transaction.
-        Only one `product` can be produced, however, and its value is the sum total of all `materials` and `additionalCosts`.
-      required: [id, type, description, user, items]
+        The cost of the `product` will be calculated as the sum total of all `materials` costs and `additionalCosts`.
+      required: [id, type, materials, product]
       additionalProperties: false
       properties:
-        date:
-          type: string
-          format: date-time
-          description: The timestamp of the transaction.
-        id:
-          type: string
-          description: Unique ID for the transaction.
-          pattern: "[a-z0-9-]+"
         type:
           readOnly: true
           type: string
           description: Type of transaction.
+          enum: [Manufacture]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: manufacture-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the event occured. (If not provided, defaults to the current date.)
         description:
+          writeOnly: true
           type: string
-          description: A short description of the transaction.
-          example: ""
-        user:
-          readOnly: true
-          type: string
-          description: The user who entered the transaction.
-          example: anonymous
-          # TODO Define a user format
-        audited:
-          readOnly: true
-          type: boolean
-          description: Whether or not this transaction has been audited for accuracy.
+          description: A short description of the purchase.
+          example: "Painted widgets green"
         materials:
           type: array
           description: A list of all the items consumed to make the product.
@@ -527,56 +573,101 @@ components:
               id:
                 $ref: "#/components/schemas/Item/properties/id"
                 readOnly: false
-                description: The item ID of the material.
+                description: The item ID of the material consumed.
+                example: 'widget-blue-2in'
               quantity:
                 type: number
-                minimum: 1
-                description: |
-                  The amount of the item consumed.
-                  Although this is a positive number, it is _subtracted_ from total inventory quantity.
-              cost:
-                readOnly: true
-                type: number
-                minimum: 0
-                description: |
-                  The calculated cost of the items, based on the inventory value at the time of the sale.
-                  Although this is a positive number, it is _subtracted_ from total inventory value.
-              inventoryQuantity:
-                type: number
-                description: The quantity of the item left in inventory _after_ manufacturing.
-                example: 200
-              inventoryCost:
-                type: number
-                description: The value of the units left in inventory _after_ manufacturing.
-                example: 2500
+                minimum: 0.01
+                description: The amount of the item consumed.
+                example: 10
+        product:
+          type: object
+          description: The item produced through manufacturing.
+          required: [id, quantity]
+          additionalProperties: false
+          properties:
+            id: 
+              $ref: "#/components/schemas/Item/properties/id"
+              readOnly: false
+              description: The item ID of the product.
+              example: 'widget-green-2in'
+            quantity:
+              type: number
+              minimum: 0.01
+              description: The amount of the item produced.
+              example: 10
         additionalCosts:
           description: |
-            Other costs, such as labor, that are directly related to the manufacturing.
-            The sum of these costs are added to the final cost-of-goods-made.
+            Additional costs which apply _directly_ to the manufacturing process.
+            Note: This is part of COGS, and only certain costs can be included.
+            See instructions for [IRS Form 1125-A](https://www.irs.gov/pub/irs-pdf/f1125a.pdf).
           type: array
           items:
             type: object
-            required: [name, cost]
-            additionalProperties:
-              description: Additional information that may be needed for records
-              type: string
+            required: [type, cost]
+            additionalProperties: false
             properties:
-              name:
+              type:
                 type: string
-                description: Name of the additional cost, to identify it.
-                example: labor
+                description: Type of adjustment.
+                enum: [labor, other]
               cost:
                 type: number
+                minimum: 0.01
+                description: Amount of the additional cost.
+              details:
+                type: string
+                description: Additional details about the cost.
+    
+    Count:
+      type: object
+      description: |
+        An record of an inventory count.
+        Unlike the usual transaction events (Purchase, Sale, and Manufacture), a count does not necessarily modify inventory.
+        If the physical quantity counted differs from the expected quantity in inventory, the relevant adjustment will be made.
+        Note: A count is assumed to be absolutely accurate, so if another transaction is added _before_ a count, the automatic audit
+        process will recalculate the adjustments of the count transaction such that the final quantity still matches. As such, changes
+        _before_ a count should never affect transactions _after_ a count, for any items involved in that count.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Count]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: count-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the count occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the purchase.
+          example: "Counted widgets"
+        items:
+          type: array
+          description: A list of all the items counted.
+          items:
+            type: object
+            required: [id, quantity]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the item counted.
+              quantity:
+                type: number
                 minimum: 0
-                description: The value of the additional cost.
-        productId: 
-          $ref: "#/components/schemas/Item/properties/id"
-          readOnly: false
-          description: The item ID of the product.
-        productQuantity:
-          type: number
-          minimum: 0
-          description: The amount of the item produced.
+                description: The number of units counted in inventory.
+                example: 250
             
     Ledger:
       readOnly: true
