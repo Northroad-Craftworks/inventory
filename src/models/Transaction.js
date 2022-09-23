@@ -181,7 +181,7 @@ export class Purchase extends TransactionEvent {
     validate(status) {
         const errors = [];
         const itemIds = new Set();
-        const items = this.items;
+        const { items } = this;
         if (!items?.length) errors.push('No items specified');
         else items.forEach((item, index) => {
             const { id, quantity, cost } = item;
@@ -236,17 +236,18 @@ export class Sale extends TransactionEvent {
     validate(status) {
         const errors = [];
         const itemIds = new Set();
-        const items = this.items;
+        const { items } = this;
         if (!items?.length) errors.push('No items specified');
         else items.forEach((item, index) => {
             const { id } = item;
             if (!id) errors.push(`Missing item ID at index ${index}`);
             else if (itemIds.has(id)) errors.push(`Duplicate item ID: ${id}`);
             else itemIds.add(id);
+            // TODO Add more validation.
         });
         super.validate(status, errors);
     }
-    
+
 
     async calculateAdjustments(date) {
         // Determine the adjustments necessary for all items.
@@ -273,34 +274,64 @@ export class Sale extends TransactionEvent {
     }
 }
 
-// export class Manufacture extends Transaction {
-//     constructor(document) {
-//         super(document);
-//     }
+export class Manufacture extends TransactionEvent {
+    validate(status) {
+        const errors = [];
+        const itemIds = new Set();
+        const { materials } = this;
+        if (!materials?.length) errors.push('No materials specified');
+        else materials.forEach((item, index) => {
+            const { id } = item;
+            if (!id) errors.push(`Missing materials item ID at index ${index}`);
+            else if (itemIds.has(id)) errors.push(`Duplicate materials item ID: ${id}`);
+            else itemIds.add(id);
+            // TODO Add more validation.
+        });
+        if (!this.product?.id) errors.push('Missing product ID');
+        else if (itemIds.has(this.product.id)) errors.push('Cannot consume and produce the same item');
+        if (this.product?.quantity <= 0) errors.push('Product quantity must be positive');
+        super.validate(status, errors);
+    }
 
-//     get type() {
-//         return 'Manufacture';
-//     }
 
-//     get items() {
-//         // TODO Return a combination of materials and product.
-//     }
+    async calculateAdjustments(date) {
 
-//     get materials() {
-//         return clone(this.document.materials);
-//     }
+        // TODO Implement cost adjustments.
+        if (this.additionalCosts) throw createError(501, "Additional costs for manufacturing isn't yet implemented", { expose: true });
 
-//     get additionalCosts() {
-//         return clone(this.document.costAdjustments);
-//     }
 
-//     get productId() {
-//         return this.document.productId;
-//     }
+        // Determine the adjustments necessary for all items.
+        let totalCosts = 0;
+        const adjustments = await Promise.all(this.materials.map(async item => {
+            const inventory = await Ledger.getInventoryValue({ itemId: item.id, endDate: date });
+            if (inventory.pending) logger.warn(`Purchasing '${item.id}' with ${pluralize('pending transaction', inventory.pending, true)} in queue`);
 
-//     get productQuantity() {
-//         return this.document.productQuantity;
-//     }
+            // Don't allow consuming more inventory than is available.
+            if (inventory.quantity < item.quantity) throw createError(400, `Insufficient inventory to consume ${item.quantity} x ${item.id}`);
 
-// }
+            // Determine the value of the consumed items.
+            const value = round(item.quantity * getUnitCost(inventory.quantity, inventory.cost, false));
+
+            // Add it to the total material cost.
+            totalCosts += value;
+
+            // Create the adjustment.
+            return {
+                id: item.id,
+                quantity: item.quantity * -1,
+                cost: value * -1
+            };
+        }));
+
+        // Add the product.
+        adjustments.push({
+            id: this.product.id,
+            quantity: this.product.quantity,
+            cost: totalCosts
+        });
+
+        // Return all adjustments.
+        return adjustments;
+    }
+}
 

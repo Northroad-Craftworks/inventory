@@ -612,7 +612,7 @@ components:
           description: A list of all the items consumed to make the product.
           items:
             type: object
-            required: [quantity, cost, unitCost]
+            required: [id, quantity]
             additionalProperties: false
             properties:
               id:
