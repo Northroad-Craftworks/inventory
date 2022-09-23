@@ -15,6 +15,7 @@ export const ID_PREFIX = 'transaction/';
  * @returns {Purchase|Sale}
  */
 function newFromDocument(document) {
+    // TODO Fix this so it works with the new data model.
     switch (document.type) {
         case 'Purchase': return new Purchase(document);
         case 'Sale': return new Sale(document);

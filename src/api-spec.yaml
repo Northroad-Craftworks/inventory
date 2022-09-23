@@ -315,6 +315,7 @@ paths:
       operationId: getTransaction
       summary: Get a record of a transaction
       tags: [Ledger]
+      deprecated: true
       responses:
         "200":
           description: Details about the transaction
