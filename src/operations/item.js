@@ -36,7 +36,7 @@ export async function updateItem(req, res) {
 export async function deleteItem(req, res) {
     const item = await Item.get(req.params.itemId);
     // TODO Check ledgers to make sure the item can be deleted.
-    if (item.quantity) throw createError(403, 'Cannot delete an item that has inventory in stock');
+    // if (item.quantity) throw createError(403, 'Cannot delete an item that has inventory in stock');
     await item.destroy();
     res.send({ ok: true });
 }

@@ -131,6 +131,7 @@ paths:
         ledgers. Once an inventory item has been bought, sold, or manufactured, it cannot be deleted until **all**
         transactions which reference it have been deleted or archived.
       tags: [Manage Items]
+      deprecated: true
       responses:
         "200":
           description: Delete successfully

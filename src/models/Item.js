@@ -23,6 +23,7 @@ const itemIndex = new database.DesignDoc('item-index:v1', {
 export default class Item {
 
     static async get(id) {
+        // TODO Get inventory as well.
         const document = await database.get(ID_PREFIX + id).catch(error => {
             if (error.statusCode === 404) throw createError(404, `Item ${id} does not exist`);
             else throw error;
@@ -31,6 +32,7 @@ export default class Item {
     }
 
     static async list(options) {
+        // TODO Use a view to get everything, with the appropriate metadata and inventory.
         const query = {
             limit: 50,
             selector: options?.filter || {},
@@ -82,18 +84,6 @@ export default class Item {
 
     get unit() {
         return this.document.unit || 'each';
-    }
-
-    get quantity() {
-        return this.document.quantity || 0;
-    }
-
-    get totalCost() {
-        return this.document.totalCost || 0;
-    }
-
-    get unitCost() {
-        return this.quantity ? Math.round(100 * this.totalCost / this.quantity) / 100 : 0;
     }
 
     get hidden() {
