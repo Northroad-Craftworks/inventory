@@ -177,9 +177,6 @@ export class TransactionEvent {
 }
 
 export class Purchase extends TransactionEvent {
-    constructor(data) {
-        super(data);
-    }
 
     validate(status) {
         const errors = [];
@@ -192,9 +189,10 @@ export class Purchase extends TransactionEvent {
             else if (itemIds.has(id)) errors.push(`Duplicate item ID: ${id}`);
             else {
                 itemIds.add(id);
-                if (quantity <= 0) errors.push(`Item quantity must be positive: ${id}`);
-                if (quantity <= 0) errors.push(`Item quantity must be positive: ${id}`);
-                if (cost <= 0) errors.push('Item cost must be positive: ${id}');
+                if (isNaN(quantity)) errors.push(`Item must have a quantity: ${id}`);
+                else if (quantity <= 0) errors.push(`Item quantity must be positive: ${id}`);
+                if (isNaN(cost)) errors.push(`Item must have a cost: ${id}`);
+                else if (cost <= 0) errors.push('Item cost must be positive: ${id}');
             }
         });
         super.validate(status, errors);
@@ -234,36 +232,45 @@ export class Purchase extends TransactionEvent {
     }
 }
 
-export class Sale extends Transaction {
-    static async record(properties, options) {
-        // Update all the items with their inventory status.
-        // TODO Can this be centralized?
-        await Promise.all(properties.items.map(async item => {
-            const ledger = await Ledger.getInventoryValue({ itemId: item.id });
-            if (ledger.pending) logger.warn(`Selling '${item.id}' with ${pluralize('pending transaction', ledger.pending, true)} in queue`);
+export class Sale extends TransactionEvent {
+    validate(status) {
+        const errors = [];
+        const itemIds = new Set();
+        const items = this.items;
+        if (!items?.length) errors.push('No items specified');
+        else items.forEach((item, index) => {
+            const { id } = item;
+            if (!id) errors.push(`Missing item ID at index ${index}`);
+            else if (itemIds.has(id)) errors.push(`Duplicate item ID: ${id}`);
+            else itemIds.add(id);
+        });
+        super.validate(status, errors);
+    }
+    
 
-            // Validate inputs.
-            if (item.quantity <= 0) throw createError(400, 'All item quantities must be positive');
-            if (item.cost !== undefined) throw createError(400, 'Cannot specify costs for sale transactions');
+    async calculateAdjustments(date) {
+        // Determine the adjustments necessary for all items.
+        return await Promise.all(this.items.map(async item => {
+            const inventory = await Ledger.getInventoryValue({ itemId: item.id, endDate: date });
+            if (inventory.pending) logger.warn(`Selling '${item.id}' with ${pluralize('pending transaction', inventory.pending, true)} in queue`);
 
-            // For sales, the quantity delta is always the inverse of the quantity.
-            item.quantityDelta = item.quantity * -1;
+            // Create the adjustment.
+            const adjustment = {
+                id: item.id,
+                quantity: item.quantity * -1
+            };
 
-            // Calculate the cost delta.
-            if (ledger.quantity <= item.quantity) item.costDelta = ledger.inventoryCost * -1;
-            else item.costDelta = item.quantityDelta * getUnitCost(ledger.quantity, ledger.inventoryCost, false);
+            /* Calculate cost delta.
+             * If there is more inventory available than is being sold, we need to calculate the unit cost.
+             * Otherwise, we can set the total cost to zero by inverting it.*/
+            adjustment.cost = inventory.quantity > item.quantity
+                ? round(adjustment.quantity * getUnitCost(inventory.quantity, inventory.cost, false))
+                : adjustment.cost = inventory.cost * -1;
+
+            // Add the adjustment to the list.
+            return adjustment;
         }));
-        return super.record(properties, options);
     }
-
-    constructor(document) {
-        super(document);
-    }
-
-    get type() {
-        return 'Sale';
-    }
-
 }
 
 // export class Manufacture extends Transaction {

@@ -98,6 +98,7 @@ export default class Ledger {
             start_key: [itemId, ledgerData.startDate],
             end_key: [itemId, ledgerData.endDate]
         };
+        // TODO Use a different view, as this one mis-reports costs after negative inventory.
         const results = await database.view(designDoc, 'values', query);
 
         // Parse the results.
@@ -195,5 +196,10 @@ export class LedgerEntry {
             `${quantity} @ ${formatCost(this.unitCost)} (${formatCost(this.cost)})`,
             `Total: ${totalQuantity} @ ${formatCost(this.totalUnitCost)} (${formatCost(this.totalCost)})`
         ].join(' ');
+    }
+
+    toJSON() {
+        const { parent, ...rest } = this;
+        return rest;
     }
 }

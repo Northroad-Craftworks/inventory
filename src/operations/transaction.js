@@ -10,9 +10,9 @@ export async function recordPurchase(req, res) {
     await recordTransaction(Purchase, req, res);
 }
 
-// export async function recordSale(req, res) {
-//     await recordTransaction(Sale, req, res);
-// }
+export async function recordSale(req, res) {
+    await recordTransaction(Sale, req, res);
+}
 
 async function recordTransaction(Model, req, res) {
     // Parse the request.
