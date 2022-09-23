@@ -144,7 +144,6 @@ paths:
       operationId: getItemLedger
       summary: Get the inventory ledger for an item
       tags: [Ledger]
-      deprecated: true
       responses:
         "200":
           description: The selected ledger view, in JSON format.
@@ -866,13 +865,13 @@ components:
               unitCost:
                 type: number
                 description: The cost-per-unit for items in the transaction.
-              inventoryQuantity:
+              totalQuantity:
                 type: number
                 description: The quantity of the item in inventory _after_ the transaction.
-              inventoryCost:
+              totalCost:
                 type: number
                 description: The value of the units in inventory _after_ the transaction.
-              inventoryUnitCost:
+              totalUnitCost:
                 type: number
                 description: The effective cost-per-unit of the item in inventory _after_ the transaction.
               audited:

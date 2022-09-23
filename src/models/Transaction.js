@@ -133,12 +133,7 @@ export class Transaction {
     }
 
     async save() {
-        const document = {
-            type: this.type,
-            ...this.document
-        };
-        const { rev } = await database.insert(document);
-        this.document._rev = rev;
+        await database.insert(this.document);
     }
 }
 
@@ -225,10 +220,10 @@ export class Purchase extends TransactionEvent {
             const actualItemCost = item.cost; // TODO Add cost adjustment.
 
             // Calculate cost delta.
-            if (inventory.inventoryQuantity >= 0) adjustment.cost = actualItemCost;
+            if (inventory.quantity >= 0) adjustment.cost = actualItemCost;
             else {
                 // For negative existing inventory, we have to calculate how much this purchase was pre-consumed.
-                const remainingQuantity = inventory.inventoryQuantity + item.quantity;
+                const remainingQuantity = inventory.quantity + item.quantity;
                 if (remainingQuantity <= 0) adjustment.cost = 0;
                 else adjustment.cost = round(remainingQuantity * actualItemCost / item.quantity);
             }
@@ -255,8 +250,8 @@ export class Sale extends Transaction {
             item.quantityDelta = item.quantity * -1;
 
             // Calculate the cost delta.
-            if (ledger.inventoryQuantity <= item.quantity) item.costDelta = ledger.inventoryCost * -1;
-            else item.costDelta = item.quantityDelta * getUnitCost(ledger.inventoryQuantity, ledger.inventoryCost, false);
+            if (ledger.quantity <= item.quantity) item.costDelta = ledger.inventoryCost * -1;
+            else item.costDelta = item.quantityDelta * getUnitCost(ledger.quantity, ledger.inventoryCost, false);
         }));
         return super.record(properties, options);
     }

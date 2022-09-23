@@ -1,6 +1,7 @@
 import createError from "http-errors";
+import pluralize from "pluralize";
 import * as database from "../lib/database.js";
-import { formatCost } from "../lib/helpers.js";
+import { formatCost, getUnitCost } from "../lib/helpers.js";
 
 const csvLedgerFields = [
     { label: 'Date', property: 'date' },
@@ -23,172 +24,38 @@ const designDoc = new database.DesignDoc('ledger:v1', {
                 if (doc._id.startsWith(ITEM_PREFIX)) {
                     const { name, account, unit } = doc;
                     const id = doc._id.substring(ITEM_PREFIX.length);
-                    const metadata = { name, account, unit }
+                    const metadata = { name, account, unit };
                     emit([id, '_metadata'], { metadata });
                     emit(['_total', '_metadata'], {
                         items: {
-                            [id]: {metadata}
+                            [id]: { metadata }
                         }
-                    })
+                    });
                     return;
                 }
 
                 // Emit transactions.
                 if (doc._id.startsWith('transaction/')) {
-                    const { audited, date, items, materials } = doc;
-                    for (const item of items) {
-                        const value = {
-                            inventoryQuantity: item.quantityDelta,
-                            inventoryCost: item.costDelta,
-                            pending: audited ? 0 : 1
-                        };
-                        emit([item.id, date], value);
+                    const { audited, date, adjustments } = doc;
+                    for (const adjustment of adjustments) {
+                        const { id, quantity, cost } = adjustment;
+                        const value = { quantity, cost, pending: audited ? 0 : 1 };
+                        emit([id, date], value);
                         emit(['_total', date], {
                             total: value,
                             items: {
-                                [item.id]: value
+                                [id]: value
                             }
-                        })
+                        });
                     }
                 }
             },
             reduce: '_sum'
         }
-        // items: {
-        //     map: function (doc) {
-        //         // Emit accounts
-        //         const ITEM_PREFIX = 'item/';
-        //         if (doc._id.startsWith(ITEM_PREFIX)) {
-        //             const { name, account, unit } = doc;
-        //             const id = doc._id.substring(ITEM_PREFIX.length);
-        //             emit([id, '_metadata'], { name, account, unit });
-        //             return;
-        //         }
-
-        //         // Emit transactions.
-        //         const TRANSACTION_PREFIX = 'transaction/';
-        //         if (doc._id.startsWith(TRANSACTION_PREFIX)) {
-        //             const { _id, audited, type, date, items, materials } = doc;
-
-        //             // Invert transaction costs for sales and consumed materials.
-        //             const multiplier = (type === 'Sale' || type === 'Manufacture') ? -1 : 1;
-
-        //             for (const item of items) {
-        //                 const { quantity, cost, inventoryQuantity, inventoryCost } = item;
-        //                 emit([item.id, date], {
-        //                     date,
-        //                     transaction: _id.substring(TRANSACTION_PREFIX.length),
-        //                     type,
-        //                     quantity: quantity * multiplier,
-        //                     cost: cost * multiplier,
-        //                     unitCost: quantity && (cost / quantity),
-        //                     inventoryQuantity,
-        //                     inventoryCost,
-        //                     inventoryUnitCost: inventoryQuantity && (inventoryCost / inventoryQuantity),
-        //                     audited
-        //                 });
-        //             }
-        //         }
-        //     },
-        //     reduce: function (keys, values, rereduce) {
-        //         const latest = values.reduce((a, b) => a.date.localeCompare(b.date) > 0 ? a : b);
-        //         const pending = sum(values.map(value => {
-        //             if (rereduce) return value.pending;
-        //             return value.audited ? 0 : 1;
-        //         }));
-        //         if (rereduce) {
-        //             latest.pending = pending;
-        //             return latest;
-        //         }
-        //         else {
-        //             const pending = values.reduce((count, value) => count += value.audited ? 0 : 1, 0);
-        //             const { id, date, audited } = latest;
-        //             const { inventoryQuantity, inventoryCost, inventoryUnitCost } = latest;
-        //             return { date, inventoryQuantity, inventoryCost, inventoryUnitCost, pending };
-        //         }
-        //     }
-        // },
-        // cogs: {
-        //     map: function (doc) {
-        //         if (!doc._id.startsWith('transaction/')) return;
-        //         if (doc.type === 'Purchase') {
-        //             for (const item of doc.items) emit(doc.date, { purchases: item.cost });
-        //         }
-        //         // TODO Handle personal use
-        //         // TODO Handle labor
-        //     },
-        //     reduce: '_sum'
-        // },
-        // inventory_value: {
-        //     map: function (doc) {
-        //         const PREFIX = 'transaction/';
-        //         if (!doc._id.startsWith(PREFIX)) return;
-        //         const { audited, date, items } = doc;
-
-        //         for (const item of items) {
-        //             const { id, inventoryQuantity, inventoryCost } = item;
-        //             const value = {
-        //                 items: {
-        //                     [id]: { date, inventoryQuantity, inventoryCost }
-        //                 },
-        //                 inventoryCost,
-        //                 pending: audited ? 1 : 0
-        //             };
-        //             emit([id, date], value);
-        //             emit(['_total', date], value);
-        //         }
-        //     },
-        //     reduce: function (keys, values, rereduce) {
-        //         const reduction = values.reduce((acc, value) => {
-        //             Object.entries(value.items).forEach(([id, item]) => {
-        //                 const accItem = acc.items[id];
-        //                 if (!accItem || accItem.date < item.date) acc.items[id] = item;
-        //             });
-        //             acc.pending += value.pending;
-        //             return acc;
-        //         });
-        //         if (rereduce) reduction.inventoryCost = sum(Object.values(reduction.items).map(item => item.inventoryCost));
-        //         return reduction;
-        //     }
-        // }
     }
 });
 
 export default class Ledger {
-    // static async getInventory(item, date) {
-    //     // TODO Refactor this to use options.
-    //     item = item?.id || item || '_total';
-    //     if (date instanceof Date) date = date.toISOString();
-    //     else if (!date) date = {};
-    //     const query = {
-    //         reduce: true,
-    //         group_level: 1,
-    //         start_key: [item],
-    //         end_key: [item, date]
-    //     };
-    //     const results = await database.view(designDoc, 'items', query);
-    //     if (results?.rows?.length > 1) throw new Error('Too many rows returned by ledger view');
-    //     const value = results?.rows[0]?.value;
-    //     if (!value) throw new Error(`Invalid results from inventoryValue view`);
-    //     return value;
-    // }
-
-    // static async getItemLedger(itemId, options) {
-    //     if (!itemId) throw new Error('An item ID is required to get an item ledger');
-    //     const filter = {
-    //         itemId,
-    //         startDate: options?.startDate || null,
-    //         endDate: options?.endDate || new Date().toISOString()
-    //     };
-    //     const query = {
-    //         reduce: false,
-    //         start_key: [itemId, filter.startDate],
-    //         end_key: [itemId, filter.endDate]
-    //     };
-    //     const results = await database.view(designDoc, 'items', query);
-    //     return new Ledger(filter, results.rows.map(row => row.value));
-    // }
-
     static async getInventoryValue(options) {
         if (options?.itemId && options?.account) throw new Error('Cannot specify both item and account');
         const itemId = options?.itemId || '_total';
@@ -203,62 +70,130 @@ export default class Ledger {
         };
         const result = await database.view(designDoc, 'values', query);
         if (!result?.rows?.[0]?.value) throw createError(404, `No results for ${itemId}`);
-        if (options?.account){
+        if (options?.account) {
             // TODO Filter the results by account.
             throw createError(501, "Cannot yet calculate inventory cost for an account.");
         }
         else {
-            // TODO Parse this result into another object.
-            return result.rows[0].value;
+            // TODO Check to ensure metadata was included.
+            return { quantity: 0, cost: 0, ...result.rows[0].value };
         }
     }
 
-    // constructor(filter, entries) {
-    //     Object.assign(this, filter);
-    //     this.entries = entries.map(entry => {
-    //         if (entry instanceof LedgerEntry) return entry;
-    //         return new LedgerEntry(entry);
-    //     });
-    // }
+    static async getItemLedger(itemId, options) {
+        if (!itemId) throw new Error('An item ID is required to get an item ledger');
 
-    // get fileHeader() {
-    //     return `Item: ${this.itemId}\nDates: ${this.startDate || 'Beginning'} - ${this.endDate}\n`;
-    // }
+        // Construct metadata about the ledger.
+        const ledgerData = {
+            startDate: options?.startDate || null,
+            endDate: options?.endDate || new Date().toISOString(),
+            item: {
+                id: itemId
+            }
+        };
 
-    // toCSV() {
-    //     return [
-    //         this.fileHeader,
-    //         csvLedgerFields.map(field => field.label).join(','),
-    //         ...this.entries.map(entry => entry.toCSV())
-    //     ].join('\n');
-    // }
+        // Query the view
+        const query = {
+            reduce: false,
+            start_key: [itemId, ledgerData.startDate],
+            end_key: [itemId, ledgerData.endDate]
+        };
+        const results = await database.view(designDoc, 'values', query);
 
-    // toString() {
-    //     return `${this.fileHeader}${['Entries:', ...this.entries.map(entry => entry.toString())].join('\n- ')}`;
-    // }
+        // Parse the results.
+        if (!results.rows?.length) throw createError(404, `No ledger found for ${itemId}`);
+        const [firstRow, ...remainingRows] = results.rows;
+        const firstRowMetadata = firstRow?.key[2] !== '_metadata';
+        if (firstRowMetadata) Object.assign(ledgerData.item, firstRow.value.metadata);
+        else {
+            const metadataQuery = { reduce: false, key: [itemId, '_metadata'] };
+            const metadataResults = await database.view(designDoc, 'values', metadataQuery);
+            const metadataValue = metadataResults?.rows?.[0]?.value?.metadata;
+            if (!metadataValue) throw new Error(`Unable to find metadata for ${itemId}`);
+            Object.assign(ledgerData.item, metadataValue);
+        }
+        const entryRows = firstRowMetadata ? remainingRows : results.rows;
+        ledgerData.entries = entryRows.map(row => row.value);
+        return new Ledger(ledgerData);
+    }
+
+    constructor(data) {
+        const { entries, ...rest } = data;
+        Object.assign(this, rest);
+
+        // Build the entries.
+        let lastEntry;
+        this.entries = entries.map(entry => {
+            if (entry instanceof LedgerEntry) throw new Error('Cannot re-use LedgerEntries');
+            const newEntry = new LedgerEntry(this, entry);
+            if (lastEntry) newEntry.setTotals(lastEntry);
+            lastEntry = newEntry;
+            return newEntry;
+        });
+    }
+
+    get fileHeader() {
+        return [
+            `Item: ${this.item.name} (${this.item.id})`,
+            `Dates: ${this.startDate || 'Beginning'} - ${this.endDate}`,
+            `Account: ${this.item.account}`,
+            `Quantity Unit: ${this.item.unit}`,
+            ''
+        ].join('\n');
+    }
+
+    toCSV() {
+        return [
+            this.fileHeader,
+            csvLedgerFields.map(field => field.label).join(','),
+            ...this.entries.map(entry => entry.toCSV())
+        ].join('\n');
+    }
+
+    toString() {
+        return `${this.fileHeader}${['Entries:', ...this.entries.map(entry => entry.toString())].join('\n- ')}`;
+    }
 }
 
-// export class LedgerEntry {
+export class LedgerEntry {
 
-//     constructor(data) {
-//         // TODO Properly define the data structure.
-//         Object.assign(this, data);
-//     }
+    constructor(parent, data) {
+        this.parent = parent;
+        this.totalQuantity = data.quantity;
+        this.totalCost = data.cost;
+        Object.assign(this, data);
+    }
 
-//     toCSV() {
-//         return csvLedgerFields
-//             .map(({ property, isCost }) => isCost ? formatCost(this[property]) : this[property])
-//             .map(value => value?.toString().replaceAll(',', '') || '')
-//             .join(',');
-//     }
+    get unitCost() {
+        return getUnitCost(this.quantity, this.cost);
+    }
 
-//     toString() {
-//         // TODO Fix this to match updated ledger properties
-//         return [
-//             this.date,
-//             this.type,
-//             `${this.quantity} @ ${formatCost(this.unitCost)} (${formatCost(this.cost)})`,
-//             `Total: ${this.inventoryQuantity} @ ${formatCost(this.inventoryUnitCost)} (${formatCost(this.inventoryCost)})`
-//         ].join(' ');
-//     }
-// }
+    get totalUnitCost() {
+        return getUnitCost(this.totalQuantity, this.totalCost);
+    }
+
+    setTotals(previousEntry) {
+        this.totalQuantity = previousEntry.totalQuantity + this.quantity;
+        this.totalCost = previousEntry.totalCost + this.cost;
+    }
+
+    toCSV() {
+        return csvLedgerFields
+            .map(({ property, isCost }) => isCost ? formatCost(this[property]) : this[property])
+            .map(value => value?.toString().replaceAll(',', '') || '')
+            .join(',');
+    }
+
+    toString() {
+        // TODO Fix this to match updated ledger properties
+        const unit = this.parent.item?.unit || 'unit';
+        const quantity = pluralize(unit, this.quantity, true);
+        const totalQuantity = pluralize(unit, this.totalQuantity, true);
+        return [
+            this.date,
+            this.type,
+            `${quantity} @ ${formatCost(this.unitCost)} (${formatCost(this.cost)})`,
+            `Total: ${totalQuantity} @ ${formatCost(this.totalUnitCost)} (${formatCost(this.totalCost)})`
+        ].join(' ');
+    }
+}
