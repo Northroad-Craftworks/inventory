@@ -9,9 +9,9 @@ const csvLedgerFields = [
     { label: 'Qty', property: 'quantity' },
     { label: 'Cost', property: 'cost', isCost: true },
     { label: 'Unit Cost', property: 'unitCost', isCost: true },
-    { label: 'Total Qty', property: 'inventoryQuantity' },
-    { label: 'Total Cost', property: 'inventoryCost', isCost: true },
-    { label: 'Total Unit Cost', property: 'inventoryUnitCost', isCost: true },
+    { label: 'Total Qty', property: 'totalQuantity' },
+    { label: 'Total Cost', property: 'totalCost', isCost: true },
+    { label: 'Total Unit Cost', property: 'totalUnitCost', isCost: true },
     { label: 'Audited', property: 'audited' }
 ];
 
@@ -98,7 +98,7 @@ export default class Ledger {
             start_key: [itemId, ledgerData.startDate],
             end_key: [itemId, ledgerData.endDate]
         };
-        // TODO Use a different view, as this one mis-reports costs after negative inventory.
+        // TODO Use a different view, as this one mis-reports costs after negative inventory, and misses some data elements.
         const results = await database.view(designDoc, 'values', query);
 
         // Parse the results.
@@ -163,6 +163,14 @@ export class LedgerEntry {
         this.totalQuantity = data.quantity;
         this.totalCost = data.cost;
         Object.assign(this, data);
+    }
+
+    get date(){
+        // TODO Fix this.
+    }
+
+    get transaction(){
+        // TODO Fix this.
     }
 
     get unitCost() {
