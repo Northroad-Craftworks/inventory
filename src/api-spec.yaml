@@ -463,6 +463,7 @@ components:
         vendor:
           type: string
           description: ID or name of the vendor where the items were purchased.
+          example: ACME
         items:
           type: array
           description: A list of all the items purchased.
