@@ -1,7 +1,6 @@
 name: Planned Feature
 description: Document an enhancement that you plan to contribute.
-title: "[Feature] "
-labels: [enhancement]
+labels: [planned, enhancement]
 body:
   - type: markdown
     attributes:
