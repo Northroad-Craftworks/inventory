@@ -1,5 +1,5 @@
-name: Planned feature
-description: Plan a new feature
+name: Planned Feature
+description: Document an enhancement that you plan to contribute.
 title: "[Feature] "
 labels: [enhancement]
 body:
