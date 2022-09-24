@@ -1,0 +1,42 @@
+name: Planned feature
+description: Plan a new feature
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Have a feature to request, or that you'd like to deliver yourself?"
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe why this feature is needed, and what it might entail.
+      placeholder: |
+        Some items are really just variations of other items. For example, a `widget` might come in the `blue-widget` and `green-widget` varieties.
+        Since other platforms support variations -- and may even use them to organize product listings -- it'd be useful if we support them as well.
+    validations:
+      required: true
+  - type: textarea
+    id: exit_criteria
+    attributes:
+      label: Exit Criteria
+      description: |
+        What statements need to be true for this to be considered finished?
+        - Use `- [ ] ` to make checkable items for tracking purposes.
+        - Use present-tense statements, as shown in the example.
+        - Leave this blank if exit criteria haven't been determined yet.
+      placeholder: |
+        - [ ] An item can be marked as a variation of another item
+        - [ ] An API is available to query all the variations of an item
+  - type: textarea
+    id: implementation_ideas
+    attributes:
+      label: Implementation Ideas
+      description: Any ideas for how this might be accomplished? Make a note of them here.
+      placeholder: |
+        So far, there three options under consideration:
+        - **Child-to-Parent**: We could add a `variantOf` field to the Item model, to link variants to their parent item
+        - **Parent-to-Child**: We could add a `variants` field to the Item model, to give each item a list of variants.
+        - **New Model**: We could add a new Variation model, separate from Item, to track these.
+        
+        There are pros and cons to each options. Ideally, we should look at how other platforms (Etsy? Square?) handle this, and mirror a common design.
