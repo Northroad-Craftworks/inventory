@@ -1,6 +1,6 @@
 import Chance from 'chance';
 import chai from 'chai';
-import { consoleTransport } from '../src/utilities/logger.js';
+import { consoleTransport } from '../src/lib/logger.js';
 
 // Silence console output from the logger.
 consoleTransport.silent = true;

@@ -1,16 +1,27 @@
 openapi: "3.0.0"
 
 info:
-  title: Simple API overview
-  version: unreleased
+  title: Northroad Craftworks Inventory
+  version: Development
+
+tags:
+  - name: Service
+    description: Information about the service's status
+  - name: Ledger
+    description: View the ledger for individual items or inventory as a whole
+  - name: Manage Items
+    description: Manage inventory items
+  - name: Record Transactions
+    description: Buy, sell, manufacture, and adjust items in inventory
 
 paths:
   /status:
     get:
       operationId: getStatus
-      summary: Get the status service
+      summary: Get the service status
+      tags: [Service]
       responses:
-        '200':
+        "200":
           description: General information about the health and status of the service.
           content:
             application/json:
@@ -21,3 +32,850 @@ paths:
                     type: string
                     description: Current release version
                     example: 1.0.0
+  /items:
+    get:
+      operationId: listItems
+      summary: List inventory items
+      tags: [Manage Items]
+      parameters:
+        - in: query
+          name: hidden
+          description: Filter by hidden status
+          schema:
+            type: boolean
+        - in: query
+          name: account
+          description: Filter by account
+          schema:
+            $ref: "#/components/schemas/Item/properties/account"
+      responses:
+        "200":
+          description: All inventory items
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+            "text/plain":
+              schema:
+                description: A text list of all the items in inventory
+        default:
+          $ref: "#/components/responses/Error"
+
+  /item/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/itemId"
+    get:
+      operationId: readItem
+      summary: Get an inventory item
+      tags: [Manage Items]
+      responses:
+        "200":
+          description: Details about the inventory item
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Item"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: createItem
+      summary: Create an inventory item
+      tags: [Manage Items]
+      requestBody:
+        description: Inventory item data
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Item"
+      responses:
+        "201":
+          description: Inventory item created
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Item"
+        "200":
+          description: Inventory item updated
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Item"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateItem
+      summary: Update an inventory item
+      tags: [Manage Items]
+      requestBody:
+        description: Updates to inventory data
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Item"
+      responses:
+        "200":
+          description: Inventory item updated
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Item"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteItem
+      summary: Delete an unused inventory item
+      description: |
+        Inventory items can only be deleted if they haven't been used for any transactions and don't exist on any
+        ledgers. Once an inventory item has been bought, sold, or manufactured, it cannot be deleted until **all**
+        transactions which reference it have been deleted or archived.
+      tags: [Manage Items]
+      deprecated: true
+      responses:
+        "200":
+          description: Delete successfully
+        default:
+          $ref: "#/components/responses/Error"
+  
+  /item/{itemId}/ledger:
+    parameters:
+      - $ref: "#/components/parameters/itemId"
+    get:
+      operationId: getItemLedger
+      summary: Get the inventory ledger for an item
+      tags: [Ledger]
+      responses:
+        "200":
+          description: The selected ledger view, in JSON format.
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Ledger"
+            "text/csv":
+              schema:
+                description: The selected ledger view, in CSV format.
+            "text/plain":
+              schema:
+                description: The selected ledger view, as human-readable text.
+        default:
+          $ref: "#/components/responses/Error"
+
+  /buy:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
+    post:
+      operationId: recordPurchase
+      summary: Record the purchase of new inventory
+      tags: [Record Transactions]
+      requestBody:
+        description: Purchase details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Purchase"
+      responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /sell:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
+    post:
+      operationId: recordSale
+      summary: Record the sale of inventory to customers
+      tags: [Record Transactions]
+      requestBody:
+        description: Sale details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Sale"
+      responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /make:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
+    post:
+      operationId: recordManufacture
+      summary: Manufacture new inventory items from existing ones
+      tags: [Record Transactions]
+      requestBody:
+        description: Manufacturing details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Manufacture"
+      responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /adjust:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
+    post:
+      operationId: recordAdjustment
+      summary: Manually adjust inventory for loss, damage, or waste
+      tags: [Record Transactions]
+      deprecated: true
+      requestBody:
+        description: Count details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Adjustment"
+      responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /count:
+    parameters:
+      - $ref: "#/components/parameters/dryRunQuery"
+    post:
+      operationId: recordCount
+      summary: Count physical inventory and automatically adjust stored quantity
+      tags: [Record Transactions]
+      deprecated: true
+      requestBody:
+        description: Count details
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/Count"
+      responses:
+        "200":
+          description: "Dry-run transaction processed but not saved."
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        "201":
+          description: "Transaction created"
+          content:
+            "application/json":
+              "schema":
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+  
+  /transaction/{transactionId}:
+    parameters:
+      - $ref: "#/components/parameters/transactionId"
+    get:
+      operationId: getTransaction
+      summary: Get a record of a transaction
+      tags: [Ledger]
+      deprecated: true
+      responses:
+        "200":
+          description: Details about the transaction
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        default:
+          $ref: "#/components/responses/Error"
+
+components:
+  parameters:
+    itemId:
+      name: itemId
+      in: path
+      required: true
+      description: The `id` of the desired item
+      schema:
+        readOnly: false
+        $ref: "#/components/schemas/Item/properties/id"
+    transactionId:
+      name: transactionId
+      in: path
+      required: true
+      description: The `id` of the desired transaction
+      schema:
+        type: string
+    itemIdQuery:
+      in: query
+      name: item
+      description: Filter by item ID
+      schema:
+        readOnly: false
+        $ref: "#/components/schemas/Item/properties/id"
+    dryRunQuery:
+      in: query
+      name: dryRun
+      description: Simulate the transaction, without executing it.
+      schema:
+        type: boolean
+        default: false
+
+  responses:
+    Error:
+      description: Something went wrong
+      content:
+        'text/plain':
+          schema:
+            type: string
+            description: A description of the problem
+            example: 'Internal server error'
+
+  schemas:
+    Transaction:
+      readOnly: true
+      type: object
+      description: The purchase, sale, auditing, or manufacturing of items.
+      required: [date, id, user, adjustments, event]
+      properties:
+        date:
+          type: string
+          format: date-time
+          description: The timestamp of the transaction.
+        id:
+          type: string
+          description: Unique ID for the transaction.
+          pattern: "[a-z0-9-]+"
+        description:
+          type: string
+          description: A short description of the transaction.
+          example: ""
+        user:
+          readOnly: true
+          type: string
+          description: The user who entered the transaction.
+          example: anonymous
+          # TODO Define a user format
+        audited:
+          readOnly: true
+          type: boolean
+          description: Whether or not this transaction has been audited for accuracy.
+        adjustments:
+          readOnly: true
+          type: array
+          description: A list of all the adjustments made to inventory based on this transaction.
+          items:
+            type: object
+            required: [id, quantity, cost]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                description: The item ID of the item adjusted.
+              quantity:
+                type: number
+                description: |
+                  The amount of the item involved, relative to the total inventory.
+                  Positive values increase total inventory and usually represent purchases or manufactured items.
+                  Negative values decrease total inventory and usually represent sales or consumed items.
+                example: 250
+              cost:
+                type: number
+                description: |
+                  The total cost of all units -- including tax, shipping, or other adjustments -- relative to total inventory.
+                  The sign of this value will always be the same as the `quantity`.
+                example: 1500
+        event:
+          oneOf:
+            - $ref: "#/components/schemas/Purchase"
+            - $ref: "#/components/schemas/Sale"
+            - $ref: "#/components/schemas/Manufacture"
+            - $ref: "#/components/schemas/Count"
+            - $ref: "#/components/schemas/Adjustment"
+          discriminator:
+            propertyName: type
+        
+    Purchase:
+      type: object
+      description: |
+        An record of purchasing materials or items for resale.
+        Purchasing items adjusts the unit cost of that item, as a weighted average with existing inventory.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Purchase]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: purchase-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the event occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the purchase.
+          example: "Bought widgets from ACME"
+        vendor:
+          type: string
+          description: ID or name of the vendor where the items were purchased.
+          example: ACME
+        items:
+          type: array
+          description: A list of all the items purchased.
+          items:
+            type: object
+            required: [id, quantity, cost]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the item purchased.
+              quantity:
+                type: number
+                minimum: 0.01
+                description: The number of units purchased.
+                example: 250
+              cost:
+                type: number
+                minimum: 0.01
+                description: The total cost of all units purchased, _excluding_ tax and shipping.
+                example: 1500
+        costAdjustments:
+          description: |
+            Other costs and discounts which apply to the whole transaction rather than individual items.
+            This includes additional costs, such as taxes or shipping, as well as cart-wide discounts or credits.
+            These adjusments are added to cost of items (proportionally to their costs) when determining inventory value.
+
+            For example: Let's say Blue Widgets are purchased for $100, Green Widgets were purchased for $300, and shipping costs $20.
+            Then Blue Widgets will be assigned 25% (`100 / 400`) the additional cost, for a total value of $105 (`$100 + 0.25 * $20`),
+            and Green Widgets will be assigned 75% (`300 / 400`) the additional cost, for a total value of $315 (`$300 + 0.75 * $20`).
+          type: array
+          items:
+            type: object
+            required: [type, cost]
+            additionalProperties: false
+            properties:
+              type:
+                type: string
+                description: Type of adjustment.
+                enum:
+                  - taxes
+                  - shipping
+                  - discount
+                  - credit
+                  - other
+              cost:
+                type: number
+                description: |
+                  Value of the additional cost or discount.
+                  Positive numbers increase costs and represent fees such as taxes and shipping
+                  Negative numbers decrease costs and represent discounts or refunds.
+              details:
+                type: string
+                description: |
+                  Additional details about the type of adjustment, such as:
+                  - Tax jurisdiction
+                  - Shipping method
+                  - Discount/coupon code
+                  - Credit source
+          example:
+            - type: taxes
+              cost: 75
+              details: Maine
+            - type: shipping
+              cost: 8.99
+    
+    Sale:
+      type: object
+      description: An record of selling items.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Sale]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: sale-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the event occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the purchase.
+          example: "Sold widgets to Alice"
+        customer:
+          type: string
+          description: ID or name of the customer to whom the items were sold.
+        items:
+          type: array
+          description: A list of all the items sold.
+          items:
+            type: object
+            required: [id, quantity]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the item sold.
+              quantity:
+                type: number
+                minimum: 0.01
+                description: The number of units sold.
+                example: 100
+    
+    Manufacture:
+      type: object
+      description: |
+        A record of manufacturing an item from materials.
+        Multiple different `materials` may be consumed and the values of each are determined at the time of the transaction.
+        The cost of the `product` will be calculated as the sum total of all `materials` costs and `additionalCosts`.
+      required: [id, type, materials, product]
+      additionalProperties: false
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Manufacture]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: manufacture-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the event occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the purchase.
+          example: "Painted widgets green"
+        materials:
+          type: array
+          description: A list of all the items consumed to make the product.
+          items:
+            type: object
+            required: [id, quantity]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the material consumed.
+                example: 'widget-blue-2in'
+              quantity:
+                type: number
+                minimum: 0.01
+                description: The amount of the item consumed.
+                example: 10
+        product:
+          type: object
+          description: The item produced through manufacturing.
+          required: [id, quantity]
+          additionalProperties: false
+          properties:
+            id: 
+              $ref: "#/components/schemas/Item/properties/id"
+              readOnly: false
+              description: The item ID of the product.
+              example: 'widget-green-2in'
+            quantity:
+              type: number
+              minimum: 0.01
+              description: The amount of the item produced.
+              example: 10
+        additionalCosts:
+          description: |
+            Additional costs which apply _directly_ to the manufacturing process.
+            Note: This is part of COGS, and only certain costs can be included.
+            See instructions for [IRS Form 1125-A](https://www.irs.gov/pub/irs-pdf/f1125a.pdf).
+          type: array
+          items:
+            type: object
+            required: [type, cost]
+            additionalProperties: false
+            properties:
+              type:
+                type: string
+                description: Type of adjustment.
+                enum: [labor, other]
+              cost:
+                type: number
+                minimum: 0.01
+                description: Amount of the additional cost.
+              details:
+                type: string
+                description: Additional details about the cost.
+    
+    Count:
+      type: object
+      description: |
+        An record of an inventory count.
+        Unlike the usual transaction events (Purchase, Sale, and Manufacture), a count does not necessarily modify inventory.
+        If the physical quantity counted differs from the expected quantity in inventory, the relevant adjustment will be made.
+        Note: A count is assumed to be absolutely accurate, so if another transaction is added _before_ a count, the automatic audit
+        process will recalculate the adjustments of the count transaction such that the final quantity still matches. As such, changes
+        _before_ a count should never affect transactions _after_ a count, for any items involved in that count.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Count]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: count-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the count occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the purchase.
+          example: "Counted widgets"
+        items:
+          type: array
+          description: A list of all the items counted.
+          items:
+            type: object
+            required: [id, quantity]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the item counted.
+              quantity:
+                type: number
+                minimum: 0
+                description: The number of units counted in inventory.
+                example: 250
+    
+    Adjustment:
+      type: object
+      description: |
+        An record of a manual inventory adjustment.
+        An adjustment can change the quantity or cost of inventory items as the result of loss, damage, waste, or similar events.
+      required: [type, id, items]
+      properties:
+        type:
+          readOnly: true
+          type: string
+          description: Type of transaction.
+          enum: [Count]
+        id:
+          writeOnly: true
+          type: string
+          description: The desired transaction ID.
+          pattern: "[a-z0-9-]+"
+          example: count-1
+        date:
+          writeOnly: true
+          type: string
+          format: date-time
+          description: When the adjustment occured. (If not provided, defaults to the current date.)
+        description:
+          writeOnly: true
+          type: string
+          description: A short description of the adjustment.
+          example: "Damaged widgets"
+        items:
+          type: array
+          description: A list of all the items counted.
+          items:
+            type: object
+            required: [id]
+            additionalProperties: false
+            properties:
+              id:
+                $ref: "#/components/schemas/Item/properties/id"
+                readOnly: false
+                description: The item ID of the item counted.
+              quantity:
+                type: number
+                description: The change to the number of units in inventory.
+                example: -10
+                default: 0
+              cost:
+                type: number
+                description: |
+                  The change in total value of units in inventory.
+                  If not specified, the cost will be adjusted based on the current unit cost.
+                example: null
+
+    Item:
+      type: object
+      required: [id]
+      additionalProperties: false
+      properties:
+        id:
+          readOnly: true
+          type: string
+          description: Unique ID or SKU of the material, part, or product.
+          pattern: "[a-z0-9-]+"
+          example: widget-blue-2in
+        name:
+          type: string
+          description: Friendly name for display.
+          example: 2" Blue Widget
+        account:
+          type: string
+          description: The asset account associated with the item.
+          enum:
+            - Raw Materials
+            - In-Progress
+            - Finished
+        unit:
+          type: string
+          description: |
+            Unit of measure for the material.
+
+            Examples:
+            - each
+            - bd.ft.
+            - fl.oz.
+          default: each
+        quantity:
+          readOnly: true
+          type: number
+          description: The quantity of the item currently in inventory.
+          example: 2
+        totalCost:
+          readOnly: true
+          type: number
+          description: The total cost of all the units currently in inventory.
+          example: 4.00
+        unitCost:
+          readOnly: true
+          type: number
+          description: The per-unit cost of each unit currently in inventory.
+          example: 2.00
+        hidden:
+          type: boolean
+          description: If `true`, the item should be hidden from selection lists and displays.
+          default: false
+
+    Ledger:
+      readOnly: true
+      type: object
+      description: A list of all the transactions which have affected an item, including calculated total inventory values.
+      additionalProperties: false
+      properties:
+        itemId:
+          $ref: "#/components/schemas/Item/properties/id"
+        startDate:
+          type: string
+          format: date-time
+          description: The date used to filter the start of the ledger, or "Beginning".
+        endDate:
+          type: string
+          format: date-time
+          description: The date used to filter the end of the ledger, or the date it was fetched.
+        entries:
+          type: array
+          description: All the entries in the ledger, or the returned portion of it.
+          items:
+            type: object
+            readOnly: true
+            description: A single ledger entry, describing a transaction and updating the value of the inventory.
+            required: [date, id, type, quantity, cost, unitCost, totalQuantity, totalCost, totalUnitCost]
+            additionalProperties: false
+            properties:
+              date:
+                type: string
+                format: date-time
+                description: The timestamp of the transaction.
+              transaction:
+                type: string
+                description: Unique ID for the transaction.
+                pattern: "[a-z0-9-]+"
+              type:
+                readOnly: true
+                type: string
+                description: Type of transaction.
+              quantity:
+                type: number
+                description: The quantity of items in the transaction, in relation to inventory.
+              cost:
+                type: number
+                description: The value of items in the transaction, in relation to inventory value.
+              unitCost:
+                type: number
+                description: The cost-per-unit for items in the transaction.
+              totalQuantity:
+                type: number
+                description: The quantity of the item in inventory _after_ the transaction.
+              totalCost:
+                type: number
+                description: The value of the units in inventory _after_ the transaction.
+              totalUnitCost:
+                type: number
+                description: The effective cost-per-unit of the item in inventory _after_ the transaction.
+              audited:
+                type: string
+                format: date-time
+                description: When the transaction was last audited for accuracy.

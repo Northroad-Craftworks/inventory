@@ -1,19 +1,20 @@
 import axios from 'axios';
 import { expect, chance } from './test-setup.js';
-import { localUrl } from '../src/server.js';
+import { localUrl } from '../src/app.js';
 
 // Create axios defaults for API calls.
-const callAPI = axios.create({
+const api = axios.create({
     method: 'GET',
     baseURL: localUrl,
-    validateStatus: () => true
+    validateStatus: () => true,
+    json: true
 });
 
 describe('server.js', function () {
     describe('status', function () {
         let response;
         before('call the API', async function () {
-            response = await callAPI({ url: 'status' });
+            response = await api.get('status');
         });
 
         it('reports the server version', function () {
@@ -25,11 +26,20 @@ describe('server.js', function () {
         });
     });
 
+    describe('createItem', function () {
+        it('should return an error', async function () {
+            const body = {
+                "name": chance.name
+            }
+            const response = await api.put('item/foo', body);
+            expect(response.status).to.equal(400);
+        });
+    });
+
     describe('unhandled requests', function () {
-        const randomEndpoint = chance.word();
         let response;
         before('call the API', async function () {
-            response = await callAPI({ url: randomEndpoint });
+            response = await api.get(chance.word());
         });
 
         it('throw a 404 error', function () {

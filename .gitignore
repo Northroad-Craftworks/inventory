@@ -2,11 +2,16 @@
 *.log
 logs
 
-# Coverage directory used by tools like istanbul
+# Coverage
 coverage
 
-# Dependency directories
+# Dependencies
 node_modules/
 
-# dotenv environment variables file
+# Secrets
 .env
+.npmrc
+/sessions
+
+# Local data
+/dbdata
