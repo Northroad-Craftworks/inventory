@@ -8,20 +8,21 @@ import logger from '../lib/logger.js';
 const router = new Router();
 export default router;
 
+
+// Keep track of which strategies are configured.
+const strategies = [];
+
+
 // Support sessions.
 passport.serializeUser((user, done) => {
-    // TODO Actually serialize the user.
     done(null, user);
 });
 passport.deserializeUser((user, done) => {
-    // TODO Actually deserialze the user.
-    done(null, user);
+    if (!strategies.includes(user.provider)) done(null, false);
+    else done(null, user);
 });
 router.use(passport.session());
 
-
-// Keep track of which strategies are configured.
-const configuredStrategies = [];
 
 // TODO Move all authentication to an external service
 
@@ -39,34 +40,34 @@ if (GOOGLE_CLIENT_ID) {
     router.get('/oauth2/redirect/google',
         passport.authenticate('google', { failureRedirect: '/login', failureMessage: true }),
         redirectToDestination);
-    configuredStrategies.push('Google');
+    strategies.push('google');
 }
 
 // TODO Configure an local strategy
 
 // Configure an anonymous strategy
-if (process.env.REQUIRE_AUTH === 'false') {
+if (process.env.ALLOW_ANONYMOUS === 'true') {
     router.get('/login/anonymous',
-        (req, res, next) => req.login({ id: 'Anonymous', provider: 'Anonymous' }, next),
+        (req, res, next) => req.login({ id: 'Anonymous', provider: 'anonymous' }, next),
         redirectToDestination);
-    configuredStrategies.push('Anonymous');
+    strategies.push('anonymous');
 }
 
 
-if (configuredStrategies.length) logger.info(`Configured authentication strategies: ${configuredStrategies.join(', ')}`);
+if (strategies.length) logger.info(`Configured authentication strategies: ${strategies.join(', ')}`);
 else logger.warn('No authentication strategies are configured!');
 
 
 // Attach the login and logout handlers.
 router.get('/login', (req, res) => {
-    const fromLogout = req.query?.source !== 'logout';
+    const fromLogout = req.query?.source === 'logout';
     const allowAutoLogin = !fromLogout && req.query?.allowAuto !== false;
-    if (allowAutoLogin && configuredStrategies.length === 1) {
-        res.redirect(`/login/${configuredStrategies[0].toLowerCase()}`);
+    if (allowAutoLogin && strategies.length === 1) {
+        res.redirect(`/login/${strategies[0].toLowerCase()}`);
     }
-    else if (configuredStrategies.length) {
+    else if (strategies.length) {
         // TODO Replace placeholder login page with a proper one.
-        const links = configuredStrategies.map(strategy => `<li><a href='/login/${strategy.toLowerCase()}'>${strategy}</a></li>`);
+        const links = strategies.map(strategy => `<li><a href='/login/${strategy}'>${strategy}</a></li>`);
         res.type('html').send(`<h1>Login</h2>\n<ul>\n${links.join('\n')}\n</ul>`);
     }
     else throw createError(503, "No authentication strategies are available", { expose: true, stack: false });
@@ -94,7 +95,8 @@ function redirectToDestination(req, res) {
  */
 function verifyOauthProfile(accessToken, refreshToken, profile, done) {
     // TODO Connect to a user database.
-    const provider = profile.provider.charAt(0).toUpperCase() + profile.provider.slice(1);
+    const provider = profile.provider?.toLowerCase();
+    if (!strategies.includes(provider)) throw new Error(`OAuth provider '${provider}' doesn't match strategy`);
     const email = profile.emails?.[0]?.value;
     const name = profile.displayName;
     const user = {
