@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": "on Saturday"
+  },
+  "stabilityDays": 3,
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "lockFileMaintenance"
+      ],
+      "stabilityDays": 0,
+      "prCreation": "immediate",
+      "automerge": true
+    }
+  ],
+  "extends": [
+    ":separateMajorReleases",
+    ":separatePatchReleases",
+    ":ignoreUnstable",
+    ":prNotPending",
+    ":updateNotScheduled",
+    ":ignoreModulesAndTests",
+    ":pinAllExceptPeerDependencies",
+    ":disableRateLimiting",
+    ":semanticCommits",
+    ":semanticCommitType(Upgrade)",
+    ":semanticCommitScopeDisabled",
+    ":enableVulnerabilityAlertsWithLabel(security vulnerability)",
+    ":automergePatch",
+    "group:monorepos",
+    "group:recommended",
+    "workarounds:all",
+    "github>whitesource/merge-confidence:beta"
+  ]
+}
