@@ -3,6 +3,8 @@ import express from 'express';
 import createError from 'http-errors';
 import logger from './lib/logger.js';
 import helmetMiddleware from './middleware/helmet.js';
+import sessionMiddleware from './middleware/session.js';
+import authenticationMiddleware from './middleware/authentication.js';
 import swaggerUiMiddleware from './middleware/swagger-ui.js';
 import loggerMiddleware from './middleware/logger.js';
 import apiMiddleware from './middleware/api.js';
@@ -18,11 +20,15 @@ app.use(helmetMiddleware);
 // Serve static assets.
 app.use('/static', express.static(new URL('static', import.meta.url).pathname));
 
+// Log requests
+app.use(loggerMiddleware);
+
+// Authenticate all other requests.
+app.use(sessionMiddleware);
+app.use(authenticationMiddleware);
+
 // Serve the swaggerUI middleware.
 app.use('/', swaggerUiMiddleware);
-
-// Log all other requests
-app.use(loggerMiddleware);
 
 // Mount the APIs
 app.use(apiMiddleware);
