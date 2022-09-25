@@ -368,7 +368,6 @@ components:
             description: A description of the problem
             example: 'Internal server error'
 
-
   schemas:
     Transaction:
       readOnly: true

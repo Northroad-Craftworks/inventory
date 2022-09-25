@@ -8,6 +8,11 @@ import logger from './logger.js';
 const router = new Router();
 export default router;
 
+router.use((req, res, next) => {
+    if (!req.user) throw createError(401, "All APIs require authentication. Please login first.");
+    else next();
+})
+
 // Use express-openapi to generate APIs based on the API spec.
 openApiFramework.initialize({
     app: router,
