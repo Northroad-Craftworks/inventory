@@ -1,5 +1,6 @@
 {
   "name": "@northroad-craftworks/inventory",
+  "private": true,
   "version": "0.0.0-unreleased.0",
   "description": "Inventory management API",
   "main": "src/app.js",
@@ -10,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com//Northroad-Craftworks/inventory.git"
+    "url": "https://github.com/Northroad-Craftworks/inventory.git"
   },
   "contributors": [
     "James Tanner <james@northroad-craftworks.com>"
