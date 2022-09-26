@@ -53,7 +53,7 @@ app.use((error, req, res, next) => {
 // Start the server.
 logger.debug('Starting HTTP server...');
 export const server = await new Promise((resolve) => {
-    const server = app.listen(process.env.PORT, () => {
+    const server = app.listen(process.env.PORT || '8080', () => {
         resolve(server);
     });
 });
