@@ -1,0 +1,38 @@
+# On an initial installation, this needs to be true.
+# createAdminSecret: false
+# allowAdminParty: false
+
+couchdbConfig:
+  couchdb:
+    uuid: 5920420c-1d39-4514-9b93-71d453826dbc
+
+clusterSize: 2
+ingress:
+  enabled: true
+  hosts: 
+    - database.northroad-craftworks.com
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: database-tls
+      hosts:
+        - database.northroad-craftworks.com
+      
+
+persistentVolume:
+  enabled: true
+  size: 1Gi
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: "app"
+                operator: In
+                values:
+                - couchdb
+          topologyKey: "kubernetes.io/hostname"
+
+
