@@ -44,6 +44,7 @@ module.exports = {
         RELEASE_NOTES_GENERATOR,
         NPM,
         HELM,
-        GITHUB
+        GITHUB,
+        DOCKER
     ]
 };
