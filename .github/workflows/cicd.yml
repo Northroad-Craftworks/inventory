@@ -42,17 +42,20 @@ jobs:
           @codedependant/semantic-release-docker@4.1.0
           conventional-changelog-eslint@3.0.9
           semantic-release-helm3@2.3.3
+    - run: echo ${{steps.semantic-release.outputs.last_release_version}}
+    - run: echo ${{steps.semantic-release.outputs.new_release_version}}
+    - run: echo ${{steps.semantic-release.outputs.new_release_published}}
     outputs:
-      new_release_version: ${{steps.semantic-release.outputs.new_release_version}}
-      latest_version: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version}}
+      new_release: ${{steps.semantic-release.outputs.new_release_published}}
+      version: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version}}
 
   production-deploy:
     if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     needs: semantic-release
     env:
-      VERSION_IS_NEW: ${{needs.semantic-release.outputs.new_release_version}}
-      APP_VERSION: ${{needs.semantic-release.outputs.latest_version}}
+      VERSION_IS_NEW: ${{needs.semantic-release.outputs.new_release}}
+      APP_VERSION: ${{needs.semantic-release.outputs.version}}
     # TODO Get the version from the release
     steps:
       - run: echo ${{env.APP_VERSION}}
