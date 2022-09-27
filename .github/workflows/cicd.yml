@@ -41,32 +41,21 @@ jobs:
           extra_plugins: |
             @codedependant/semantic-release-docker@4.1.0
             conventional-changelog-eslint@3.0.9
-    
 
-    outputs:
-      new_release: ${{steps.semantic-release.outputs.new_release_published}}
-      version: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version || 'latest'}}
-
-  production-deploy:
-    if: github.ref_name == 'main'
-    runs-on: ubuntu-latest
-    needs: semantic-release
-    env:
-      CLUSTER: northroad-craftworks-microservices
-      VERSION_IS_NEW: ${{needs.semantic-release.outputs.new_release}}
-      APP_VERSION: ${{needs.semantic-release.outputs.version}}
-    # TODO Get the version from the release
-    steps:
       - name: Update Kubernetes Definition
+        if: github.ref_name == 'main'
+        env:
+          APP_VERSION: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version || 'latest'}}
         run: envsubst '${APP_VERSION}' < kubernetes/app.yaml > kubernetes/app.yaml
       - name: Install doctl
+        if: github.ref_name == 'main'
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       - name: Fetch Kubeconfig
+        if: github.ref_name == 'main'
         run:  doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{env.CLUSTER}}
       - name: Deploy App
+        if: github.ref_name == 'main'
         run: kubectl -n production apply -f kubernetes
-
-
 
