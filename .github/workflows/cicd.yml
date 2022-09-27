@@ -42,7 +42,7 @@ jobs:
           @codedependant/semantic-release-docker@4.1.0
           conventional-changelog-eslint@3.0.9
           semantic-release-helm3@2.3.3
-    - run: 'echo Context: ${{toJSON(steps.semantic-release.outputs)}}'
+    - run: echo `${{toJSON(steps.semantic-release.outputs)}}`
     outputs:
       new_release: ${{steps.semantic-release.outputs.new_release_published}}
       version: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version || 'latest'}}
