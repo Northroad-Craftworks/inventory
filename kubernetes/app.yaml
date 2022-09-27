@@ -15,7 +15,7 @@ kind: Deployment
 metadata:
   name: inventory
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: inventory
@@ -34,5 +34,8 @@ spec:
           value: "Inventory: Coming Soon™ ${APP_VERSION}"
         resources:
           limits:
-            cpu: 100m
+            cpu: 50m
+            memory: 65Mi
+          requests:
+            cpu: 25m
             memory: 32Mi

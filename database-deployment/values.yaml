@@ -6,7 +6,7 @@ couchdbConfig:
   couchdb:
     uuid: 5920420c-1d39-4514-9b93-71d453826dbc
 
-clusterSize: 2
+clusterSize: 1
 ingress:
   enabled: true
   hosts:
@@ -36,5 +36,8 @@ persistentVolume:
 
 resources:
   limits:
-    cpu: 100m
+    cpu: 20m
     memory: 256Mi
+  requests:
+    cpu: 10m
+    memory: 128Mi
