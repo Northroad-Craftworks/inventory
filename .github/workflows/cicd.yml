@@ -42,8 +42,26 @@ jobs:
           @codedependant/semantic-release-docker@4.1.0
           conventional-changelog-eslint@3.0.9
           semantic-release-helm3@2.3.3
-    - name: Helm chart updated?
-      run: cat helm/Chart.yaml
+    
+    - name: Configure Git
+      if: steps.semantic-release.outputs.new_release_published == 'true'
+      run: |
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+    - name: Install Helm
+      if: steps.semantic-release.outputs.new_release_published == 'true'
+      uses: azure/setup-helm@v1
+      with:
+        version: v3.8.1
+    - name: Publish Helm Chart
+      if: steps.semantic-release.outputs.new_release_published == 'true'
+      uses: helm/chart-releaser-action@v1.4.0
+      env:
+        CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      with:
+        charts_dir: helm
+        charts_repo_url: https://northroad-craftworks.github.io/helm-charts/
+
     outputs:
       new_release: ${{steps.semantic-release.outputs.new_release_published}}
       version: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version || 'latest'}}
