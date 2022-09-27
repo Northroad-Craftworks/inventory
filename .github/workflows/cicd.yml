@@ -43,7 +43,7 @@ jobs:
           semantic-release-helm3@2.3.3
 
   production-deploy:
-    if: github.branch == 'main'
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     needs: semantic-release
     env:
