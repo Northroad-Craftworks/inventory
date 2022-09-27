@@ -23,6 +23,15 @@ const HELM = [
 
 const GITHUB = '@semantic-release/github';
 
+const DOCKER = [
+    '@codedependant/semantic-release-docker',
+    {
+        dockerTags: ['latest', '{{version}}'],
+        dockerRegistry: process.env.REGISTRY,
+        dockerLogin: false
+    }
+]
+
 
 module.exports = {
     branches: [
