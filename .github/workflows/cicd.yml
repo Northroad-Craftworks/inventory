@@ -47,9 +47,11 @@ jobs:
         if: github.ref_name == 'main'
         env:
           APP_VERSION: ${{steps.semantic-release.outputs.new_release_version || steps.semantic-release.outputs.last_release_version || 'latest'}}
-        run: envsubst < kubernetes/app.yaml > kubernetes/app.yaml
+        run: envsubst < "./kubernetes/app.yaml" > "./kubernetes/finished-app.yaml"
       - name: DEBUG kubernetes/app.yaml
-        run: cat kubernetes/app.yaml
+        run: cat "./kubernetes/app.yaml"
+      - name: DEBUG kubernetes/finished-app.yaml
+        run: cat "./kubernetes/finished-app.yaml"
       - name: Install doctl
         if: github.ref_name == 'main'
         uses: digitalocean/action-doctl@v2
