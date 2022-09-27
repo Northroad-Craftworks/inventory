@@ -12,55 +12,36 @@ jobs:
   semantic-release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18.x
-        cache: 'npm'
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
 
-    - run: npm ci
-    - run: npm run build --if-present
+      - run: npm ci
+      - run: npm run build --if-present
 
-#     - run: npm test
+  #     - run: npm test
 
-    - name: Log in to the Container registry
-      uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Semantic Release
-      id: semantic-release
-      uses: cycjimmy/semantic-release-action@v3.1.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        semantic_version: 19.0.5
-        extra_plugins: |
-          @codedependant/semantic-release-docker@4.1.0
-          conventional-changelog-eslint@3.0.9
-          semantic-release-helm3@2.3.3
+      - name: Semantic Release
+        id: semantic-release
+        uses: cycjimmy/semantic-release-action@v3.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          semantic_version: 19.0.5
+          extra_plugins: |
+            @codedependant/semantic-release-docker@4.1.0
+            conventional-changelog-eslint@3.0.9
     
-    - name: Configure Git
-      if: steps.semantic-release.outputs.new_release_published == 'true'
-      run: |
-        git config user.name "$GITHUB_ACTOR"
-        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-    - name: Install Helm
-      if: steps.semantic-release.outputs.new_release_published == 'true'
-      uses: azure/setup-helm@v1
-      with:
-        version: v3.8.1
-    - name: Publish Helm Chart
-      if: steps.semantic-release.outputs.new_release_published == 'true'
-      uses: helm/chart-releaser-action@v1.4.0
-      env:
-        CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      with:
-        charts_dir: helm
-        charts_repo_url: https://northroad-craftworks.github.io/helm-charts/
 
     outputs:
       new_release: ${{steps.semantic-release.outputs.new_release_published}}
@@ -76,6 +57,8 @@ jobs:
       APP_VERSION: ${{needs.semantic-release.outputs.version}}
     # TODO Get the version from the release
     steps:
+      - name: Update Kubernetes Definition
+        run: envsubst '${APP_VERSION}' < kubernetes/app.yaml > kubernetes/app.yaml
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
@@ -83,7 +66,7 @@ jobs:
       - name: Fetch Kubeconfig
         run:  doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{env.CLUSTER}}
       - name: Deploy App
-        run: kubectl -n production get pods # TODO Deploy
+        run: kubectl -n production apply -f kubernetes
 
 
 

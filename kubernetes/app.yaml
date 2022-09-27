@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: inventory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+    spec:
+      containers:
+      - name: hello-kubernetes
+        image: paulbouwer/hello-kubernetes:1.8
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MESSAGE
+          value: "Inventory: Coming Soon™ ${APP_VERSION}"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 32Mi
+          requests:
+            cpu: 200m
+            memory: 16Mi

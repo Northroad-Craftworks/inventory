@@ -14,13 +14,6 @@ const RELEASE_NOTES_GENERATOR = [
 
 const NPM = '@semantic-release/npm';
 
-const HELM = [
-    "semantic-release-helm3",
-    {
-        chartPath: './helm'
-    }
-];
-
 const GITHUB = '@semantic-release/github';
 
 const DOCKER = [
@@ -43,7 +36,6 @@ module.exports = {
         COMMIT_ANALYZER,
         RELEASE_NOTES_GENERATOR,
         NPM,
-        HELM,
         GITHUB,
         DOCKER
     ]
