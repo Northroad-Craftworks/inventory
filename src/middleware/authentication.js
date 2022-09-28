@@ -54,7 +54,7 @@ if (process.env.ALLOW_ANONYMOUS === 'true') {
 }
 
 
-if (strategies.length) logger.info(`Configured authentication strategies: ${strategies.join(', ')}`);
+if (strategies.length) logger.verbose(`Configured authentication strategies: ${strategies.join(', ')}`);
 else logger.warn('No authentication strategies are configured!');
 
 
