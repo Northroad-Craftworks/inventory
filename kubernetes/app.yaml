@@ -67,10 +67,4 @@ spec:
               optional: true
         - name: ALLOW_ANONYMOUS
           value: 'false'
-        resources:
-          limits:
-            cpu: 200m
-            memory: 256Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi
+
