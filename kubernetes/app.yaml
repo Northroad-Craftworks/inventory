@@ -25,13 +25,44 @@ spec:
         app: inventory
     spec:
       containers:
-      - name: hello-kubernetes
-        image: paulbouwer/hello-kubernetes:1.8
+      - name: inventory
+        image: ghcr.io/northroad-craftworks/inventory:${APP_VERSION}
         ports:
         - containerPort: 8080
         env:
-        - name: MESSAGE
-          value: "Inventory: Coming Soon™ ${APP_VERSION}"
+        - name: PORT
+          value: '8080'
+        - name: LOG_LEVEL
+          value: verbose
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: session-secret
+              key: secret
+        - name: COUCHDB_URL
+          value: http://database-couchdb:5984
+        - name: COUCHDB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: database-couchdb
+              key: adminUsername
+        - name: COUCHDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-couchdb
+              key: adminPassword
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: database-couchdb
+              key: clientId
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: database-couchdb
+              key: clientSecret
+        - name: ALLOW_ANONYMOUS
+          value: 'false'
         resources:
           limits:
             cpu: 50m
