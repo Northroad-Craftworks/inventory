@@ -34,6 +34,8 @@ spec:
           value: '8080'
         - name: LOG_LEVEL
           value: verbose
+        - name: REDIS_HOST
+          value: redis
         - name: SESSION_SECRET
           valueFrom:
             secretKeyRef:

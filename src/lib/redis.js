@@ -1,6 +1,11 @@
 import Redis from 'ioredis';
 import logger from '../lib/logger.js';
-export const client = new Redis({lazyConnect: true});
+
+
+export const client = new Redis({
+    lazyConnect: true,
+    host: process.env.REDIS_HOST
+});
 export default client;
 
 // Make sure the initial connection works.
