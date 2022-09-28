@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+data:
+  redis-config: |
+    maxmemory 8mb
+    maxmemory-policy allkeys-lru
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis
+spec:
+  containers:
+  - name: redis
+    image: redis:7.0.5-alpine
+    ports:
+    - containerPort: 6379
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+    volumeMounts:
+    - mountPath: /redis-master-data
+      name: data
+    - mountPath: /redis-master
+      name: config
+  volumes:
+    - name: data
+      emptyDir: {}
+    - name: config
+      configMap:
+        name: redis-config
+        items:
+        - key: redis-config
+          path: redis.conf

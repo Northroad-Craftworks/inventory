@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Router } from 'express';
 import createError from 'http-errors';
 import passport from 'passport';
@@ -12,7 +11,6 @@ export default router;
 // Keep track of which strategies are configured.
 const strategies = [];
 
-
 // Support sessions.
 passport.serializeUser((user, done) => {
     done(null, user);
@@ -22,6 +20,10 @@ passport.deserializeUser((user, done) => {
     else done(null, user);
 });
 router.use(passport.session());
+router.use((req, res, next) => {
+    if (!req.session) throw createError(503, "Failed to fetch session", {expose: true});
+    else next();
+})
 
 
 // TODO Move all authentication to an external service
