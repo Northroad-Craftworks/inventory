@@ -10,7 +10,8 @@ env:
   CLUSTER: northroad-craftworks-microservices
   
 jobs:
-  semantic-release:
+  cicd:
+    name: Build & Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
