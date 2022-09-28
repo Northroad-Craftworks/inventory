@@ -50,6 +50,13 @@ app.use((error, req, res, next) => {
     else res.sendStatus(statusCode);
 });
 
+// Trust the proxy, if configured.
+const {TRUST_PROXY} = process.env;
+if (TRUST_PROXY) {
+    app.set('trust proxy', TRUST_PROXY === 'true' ? true : TRUST_PROXY);
+    logger.verbose(`Set "trust proxy" to ${TRUST_PROXY}`);
+}
+
 // Start the server.
 logger.debug('Starting HTTP server...');
 export const server = await new Promise((resolve) => {

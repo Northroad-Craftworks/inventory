@@ -30,6 +30,8 @@ spec:
         ports:
         - containerPort: 8080
         env:
+        - name: TRUST_PROXY
+          value: 'true'
         - name: PORT
           value: '8080'
         - name: LOG_LEVEL
