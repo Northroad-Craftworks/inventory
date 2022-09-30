@@ -1,0 +1,33 @@
+name: Semantic Release
+
+on:
+  push:
+    branches: [ main, next ]
+  
+jobs:
+  cicd:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run build --if-present
+
+  #     - run: npm test
+
+      - name: Semantic Release
+        id: semantic-release
+        uses: cycjimmy/semantic-release-action@v3.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          semantic_version: 19.0.5
+          extra_plugins: |
+            @codedependant/semantic-release-docker@4.1.0
+            conventional-changelog-eslint@3.0.9
