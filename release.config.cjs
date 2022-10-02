@@ -1,7 +1,14 @@
 const COMMIT_ANALYZER = [
     '@semantic-release/commit-analyzer',
     {
-        preset: 'eslint'
+        preset: 'eslint',
+        releaseRules: [
+            { tag: 'Breaking', release: 'major' },
+            { tag: 'New', release: 'minor' },
+            { tag: 'Update', release: 'minor' },
+            { tag: 'Fix', release: 'patch' },
+            { tag: 'Upgrade', release: 'patch' }
+        ]
     }
 ];
 
