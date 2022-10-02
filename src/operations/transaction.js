@@ -1,4 +1,4 @@
-import { Transaction, Purchase, Sale, Manufacture } from "../models/Transaction.js";
+import { Transaction, Purchase, Sale, Manufacture, Count } from "../models/Transaction.js";
 
 
 export async function getTransaction(req, res) {
@@ -16,6 +16,10 @@ export async function recordSale(req, res) {
 
 export async function recordManufacture(req, res) {
     await recordTransaction(Manufacture, req, res);
+}
+
+export async function recordCount(req, res) {
+    await recordTransaction(Count, req, res);
 }
 
 async function recordTransaction(Model, req, res) {
