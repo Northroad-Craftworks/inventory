@@ -1,11 +1,13 @@
 import createError from "http-errors";
 import apiSpec from "../lib/api-spec.js";
-import * as database from "../lib/database.js";
+import Database, { DesignDoc } from "../lib/database.js";
 import { formatCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'item/';
 
-const itemIndex = new database.DesignDoc('item-index:v1', {
+const database = new Database('inventory');
+await database.initialize();
+const itemIndex = new DesignDoc(database, 'item-index:v1', {
     language: 'query',
     views: {
         all: {
@@ -37,14 +39,14 @@ export default class Item {
             limit: 50,
             selector: options?.filter || {},
             use_index: `${itemIndex.name}/all`
-        }
+        };
 
         // Get the first set of items.
         let results = await database.find(query);
         const items = results.docs.map(doc => new Item(doc));
 
         // Keep getting pages until there are no more pages.
-        while (results.getNextPage){
+        while (results.getNextPage) {
             results = await results.getNextPage();
             items.push(...results.docs.map(doc => new Item(doc)));
         }

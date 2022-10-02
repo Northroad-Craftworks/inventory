@@ -3,11 +3,14 @@ import clone from "rfdc";
 import pluralize from "pluralize";
 import apiSpec from "../lib/api-spec.js";
 import logger from "../lib/logger.js";
-import * as database from "../lib/database.js";
+import Database, { DesignDoc } from "../lib/database.js";
 import Ledger from "./Ledger.js";
 import { round, getUnitCost } from "../lib/helpers.js";
 
 export const ID_PREFIX = 'transaction/';
+
+const database = new Database('inventory');
+await database.initialize();
 
 /**
  * Instantiate transaction subclasses from a document, based on the `type` field.
