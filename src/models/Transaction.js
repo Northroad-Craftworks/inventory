@@ -339,3 +339,48 @@ export class Manufacture extends TransactionEvent {
     }
 }
 
+export class Count extends TransactionEvent {
+    validate(status) {
+        const errors = [];
+        const itemIds = new Set();
+        const { items } = this;
+        if (!items?.length) errors.push('No items specified');
+        else items.forEach((item, index) => {
+            const { id } = item;
+            if (!id) errors.push(`Missing item ID at index ${index}`);
+            else if (itemIds.has(id)) errors.push(`Duplicate item ID: ${id}`);
+            else itemIds.add(id);
+            // TODO Add more validation.
+        });
+        super.validate(status, errors);
+    }
+
+
+    async calculateAdjustments(date) {
+        // Determine the adjustments necessary for all items.
+        return await Promise.all(this.items.map(async item => {
+            const inventory = await Ledger.getInventoryValue({ itemId: item.id, endDate: date });
+            if (inventory.pending) logger.warn(`Selling '${item.id}' with ${pluralize('pending transaction', inventory.pending, true)} in queue`);
+
+            // Create the adjustment.
+            const adjustment = {
+                id: item.id,
+                quantity: item.quantity - inventory.quantity
+            };
+
+            // If a target cost is supplied, enforce it. Otherwise, use the inventory unit-cost.
+            if (item.cost) adjustment.cost = item.cost - inventory.cost;
+            else {
+                const inventoryUnitCost = getUnitCost(inventory.quantity, inventory.cost, false)
+                adjustment.cost = round(adjustment.quantity * inventoryUnitCost);
+            }
+
+            // Never let total cost drop below zero.
+            if (inventory.cost + adjustment.cost < 0) adjustment.cost = inventory.cost * -1;
+
+            // Add the adjustment to the list.
+            return adjustment;
+        }));
+    }
+}
+

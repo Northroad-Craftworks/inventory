@@ -28,11 +28,6 @@ const designDoc = new DesignDoc(database, 'ledger:v1', {
                     const id = doc._id.substring(ITEM_PREFIX.length);
                     const metadata = { name, account, unit };
                     emit([id, '_metadata'], { metadata });
-                    emit(['_total', '_metadata'], {
-                        items: {
-                            [id]: { metadata }
-                        }
-                    });
                     return;
                 }
 

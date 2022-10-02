@@ -285,7 +285,6 @@ paths:
       operationId: recordCount
       summary: Count physical inventory and automatically adjust stored quantity
       tags: [Record Transactions]
-      deprecated: true
       requestBody:
         description: Count details
         content:
@@ -713,6 +712,13 @@ components:
                 type: number
                 minimum: 0
                 description: The number of units counted in inventory.
+                example: 250
+              cost:
+                type: number
+                minimum: 0
+                description: |
+                  The actual cost of the units in inventory.
+                  If not provided, it will be calculated based on existing inventory unit price.
                 example: 250
     
     Adjustment:
