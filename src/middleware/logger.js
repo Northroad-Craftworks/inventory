@@ -3,13 +3,22 @@ import chalk from 'chalk';
 import logger from '../lib/logger.js';
 
 morgan.token('user', req => {
-    if (req.user) {
-        const { id, email, provider } = req.user;
+    const user = req.user || req.initialUser;
+    if (user) {
+        const { id, email, provider } = user;
         const userId = email || id || 'Unknown';
         if (provider === 'Anonymous') return chalk.green(userId);
         else return chalk.cyan(userId);
     }
     return chalk.red('Unauthenticated');
+});
+
+morgan.token('trace', req => {
+    const { traceId, generatedTraceId } = req;
+    if (!traceId) return chalk.red('no-trace');
+    if (generatedTraceId) return chalk.yellow(traceId);
+    return chalk.blue(traceId);
+    
 });
 
 function format(tokens, req, res) {
@@ -20,13 +29,14 @@ function format(tokens, req, res) {
     else if (status.startsWith('5')) status = chalk.red(status);
     else status = chalk.green(status);
 
-    const user = tokens.user(req, res);
+    const trace = tokens.trace(req);
+    const user = tokens.user(req);
     const method = tokens.method(req, res);
     const url = tokens.url(req, res);
     const responseTime = tokens['response-time'](req, res);
     const contentLength = tokens.res(req, res, 'content-length');
 
-    return `${user} ${method} ${url} - ${status} - ${responseTime || 'unknown '}ms - ${contentLength || 0} bytes`;
+    return `${trace} ${user} ${method} ${url} - ${status} - ${responseTime || 'unknown '}ms - ${contentLength || 0} bytes`;
 }
 
 const options = {

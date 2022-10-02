@@ -3,6 +3,7 @@ import express from 'express';
 import createError from 'http-errors';
 import logger from './lib/logger.js';
 import helmetMiddleware from './middleware/helmet.js';
+import traceIdMiddleware from './middleware/trace-id.js';
 import sessionMiddleware from './middleware/session.js';
 import authenticationMiddleware from './middleware/authentication.js';
 import swaggerUiMiddleware from './middleware/swagger-ui.js';
@@ -19,6 +20,9 @@ app.use(helmetMiddleware);
 
 // Serve static assets.
 app.use('/static', express.static(new URL('static', import.meta.url).pathname));
+
+// Attach traceIds to all requests.
+app.use(traceIdMiddleware);
 
 // Log requests
 app.use(loggerMiddleware);

@@ -1,6 +1,6 @@
 import createError from "http-errors";
 import pluralize from "pluralize";
-import * as database from "../lib/database.js";
+import Database, { DesignDoc } from "../lib/database.js";
 import { formatCost, getUnitCost } from "../lib/helpers.js";
 
 const csvLedgerFields = [
@@ -15,7 +15,9 @@ const csvLedgerFields = [
     { label: 'Audited', property: 'audited' }
 ];
 
-const designDoc = new database.DesignDoc('ledger:v1', {
+const database = new Database('inventory');
+await database.initialize();
+const designDoc = new DesignDoc(database, 'ledger:v1', {
     views: {
         values: {
             map: function (doc) {
