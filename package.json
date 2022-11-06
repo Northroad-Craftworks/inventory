@@ -30,7 +30,7 @@
     "http-errors": "2.0.0",
     "ioredis": "5.2.4",
     "morgan": "1.10.0",
-    "nano": "10.0.0",
+    "nano": "10.1.0",
     "passport": "0.6.0",
     "passport-google-oauth20": "2.0.0",
     "pluralize": "8.0.0",
