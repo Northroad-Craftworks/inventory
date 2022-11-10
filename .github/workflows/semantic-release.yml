@@ -33,7 +33,7 @@ jobs:
 
       - name: Semantic Release
         id: semantic-release
-        uses: cycjimmy/semantic-release-action@v3.1.2
+        uses: cycjimmy/semantic-release-action@v3.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_REGISTRY_USER: ${{ github.actor }}
