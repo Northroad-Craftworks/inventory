@@ -1,0 +1,1 @@
+export const startDate = '2022-01-01'; // TODO Make this configurable.

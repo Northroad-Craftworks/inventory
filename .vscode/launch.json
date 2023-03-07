@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run Local",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/redesign/local.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "cwd": "${workspaceFolder}",
+            "outputCapture": "std",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Run Server",
             "type": "node",
             "request": "launch",
