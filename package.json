@@ -21,7 +21,7 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "10.1.0",
     "chalk": "5.2.0",
-    "connect-redis": "7.0.1",
+    "connect-redis": "7.1.1",
     "dotenv": "16.0.3",
     "express": "4.18.2",
     "express-openapi": "12.1.0",
